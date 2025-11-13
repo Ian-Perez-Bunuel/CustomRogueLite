@@ -12,8 +12,11 @@ float noiseWeight;
 float floorOffset;
 float weightMultiplier;
 bool closeEdges;
+
 float hardFloor;
 float hardFloorWeight;
+float hardRoof;
+float hardRoofWeight;
 
 float4 params;
 
@@ -45,11 +48,26 @@ void Density(int3 id : SV_DispatchThreadID)
         frequency *= lacunarity;
     }
     
+    // Define the vertical range you care about
+    float minY = centre.y - worldSize.y * 0.5;
+    float maxY = centre.y + worldSize.y * 0.5;
+
+    // 0 at bottom, 1 at top
+    float y01 = saturate((pos.y - minY) / (maxY - minY));
+    
+    // 1 at bottom & top, 0 in the middle
+    float edgeBias = abs(y01 - 0.5) * 2.0;
+    
     float finalVal = -(pos.y + floorOffset) + noise * noiseWeight + (pos.y % params.x) * params.y;
+
 
     if (pos.y < hardFloor)
     {
         finalVal += hardFloorWeight;
+    }
+    else if (pos.y > hardRoof)
+    {
+       finalVal += hardRoofWeight;
     }
 
     if (closeEdges)
@@ -57,7 +75,6 @@ void Density(int3 id : SV_DispatchThreadID)
         float3 edgeOffset = abs(pos * 2) - worldSize + spacing / 2;
         float edgeWeight = saturate(sign(max(max(edgeOffset.x, edgeOffset.y), edgeOffset.z)));
         finalVal = finalVal * (1 - edgeWeight) - 100 * edgeWeight;
-        
     }
 
     int index = indexFromCoord(id.x, id.y, id.z);

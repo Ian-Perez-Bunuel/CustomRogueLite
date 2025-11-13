@@ -19,6 +19,10 @@ public class NoiseDensity : DensityGenerator
     public float hardFloorHeight;
     public float hardFloorWeight;
 
+    public float hardRoofHeight;
+    public float hardRoofWeight;
+
+
     public Vector4 shaderParams;
 
     public override ComputeBuffer Generate(ComputeBuffer pointsBuffer, int numPointsPerAxis, float boundsSize, Vector3 worldBounds, Vector3 centre, Vector3 offset, float spacing)
@@ -50,6 +54,8 @@ public class NoiseDensity : DensityGenerator
         densityShader.SetFloat("weightMultiplier", weightMultiplier);
         densityShader.SetFloat("hardFloor", hardFloorHeight);
         densityShader.SetFloat("hardFloorWeight", hardFloorWeight);
+        densityShader.SetFloat("hardRoof", hardRoofHeight);
+        densityShader.SetFloat("hardRoofWeight", hardRoofWeight);
 
         densityShader.SetVector("params", shaderParams);
 

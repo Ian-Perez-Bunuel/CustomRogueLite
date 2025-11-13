@@ -5,6 +5,7 @@ using Unity.VisualScripting;
 using UnityEngine;
 using static UnityEngine.EventSystems.EventTrigger;
 
+[ExecuteInEditMode]
 public class MarchingCubesCompute : MonoBehaviour
 {
     [StructLayout(LayoutKind.Sequential)]
@@ -32,19 +33,19 @@ public class MarchingCubesCompute : MonoBehaviour
             }
         }
     }
-    public DensityGenerator densityGenerator;
 
     [Header("Compute Shader")]
     public ComputeShader computeShader;
 
-    // Mesh
-    MeshFilter meshFilter;
-
     [Header("Generation Data")]
+    public DensityGenerator densityGenerator;
     // Amount of boxes per axis
-    public Vector3Int dimensions;
+    public Vector3 worldBounds;
+    [SerializeField] GameObject chunkHolder;
+    List<Chunk> chunks;
 
     [Header("Voxel Settings")]
+    public Material material;
     public float surfaceLevel;
     public float boundsSize = 1;
     public Vector3 offset = Vector3.zero;
@@ -63,16 +64,37 @@ public class MarchingCubesCompute : MonoBehaviour
     void Start()
     {
         CreateBuffers();
-        meshFilter = GetComponent<MeshFilter>();
         kernel = computeShader.FindKernel("March");
         
         computeShader.SetFloat("surfaceLevel", surfaceLevel);
         computeShader.SetInt("numPointsPerAxis", numPointsPerAxis);
+
+        chunks = new List<Chunk>();
     }
-    void BuildMesh()
+
+    Vector3 CentreFromCoord(Vector3Int coord)
+    {
+        // Centre entire map at origin
+        //if (fixedMapSize)
+        //{
+        //    Vector3 totalBounds = (Vector3)numChunks * boundsSize;
+        //    return -totalBounds / 2 + (Vector3)coord * boundsSize + Vector3.one * boundsSize / 2;
+        //}
+
+        return new Vector3(coord.x, coord.y, coord.z) * boundsSize;
+    }
+
+    void BuildMesh(Chunk chunk)
     {
         int numVoxelsPerAxis = numPointsPerAxis - 1;
         int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
+
+        Vector3Int coord = chunk.GetCoords();
+        Vector3 centre = CentreFromCoord(coord);
+
+        // Put in build chunk
+        float pointSpacing = boundsSize / (numPointsPerAxis - 1);
+        densityGenerator.Generate(pointsBuffer, numPointsPerAxis, boundsSize, worldBounds, centre, offset, pointSpacing);
 
         triangleBuffer.SetCounterValue(0);
         computeShader.SetBuffer(kernel, "points", pointsBuffer);
@@ -109,7 +131,7 @@ public class MarchingCubesCompute : MonoBehaviour
         mesh.vertices = meshVertices;
         mesh.triangles = meshTriangles;
         mesh.RecalculateNormals();
-        meshFilter.mesh = mesh;
+        chunk.SetMesh(mesh);
     }
 
     void CreateBuffers()
@@ -155,14 +177,51 @@ public class MarchingCubesCompute : MonoBehaviour
         }
     }
 
+    Chunk CreateChunk(Vector3Int coord)
+    {
+        GameObject chunk = new GameObject($"Chunk ({coord.x}, {coord.y}, {coord.z})");
+        chunk.transform.parent = chunkHolder.transform;
+        Chunk newChunk = chunk.AddComponent<Chunk>();
+        newChunk.SetCoords(coord);
+        return newChunk;
+    }
+
+    public void UpdateWorld()
+    {
+        if (chunks.Count != worldBounds.x * worldBounds.y * worldBounds.z)
+        {
+            // Create new chunks
+            for (int x = 0; x < worldBounds.x; x++)
+            {
+                for (int y = 0; y < worldBounds.y; y++)
+                {
+                    for (int z = 0; z < worldBounds.x; z++)
+                    {
+                        Chunk chunk = CreateChunk(new Vector3Int(x, y, z));
+                        chunk.Setup(material, false);
+                        chunks.Add(chunk);
+                    }
+                }
+            }
+        }
+        // Give meshes
+        BuildAllChunks();
+    }
+
     // Update is called once per frame
     void Update()
     {
         if (Input.GetKeyUp(KeyCode.Space))
         {
-            float pointSpacing = boundsSize / (numPointsPerAxis - 1);
-            densityGenerator.Generate(pointsBuffer, numPointsPerAxis, boundsSize, dimensions, Vector3.zero, offset, pointSpacing);
-            BuildMesh();
+            UpdateWorld();
+        }
+    }
+
+    void BuildAllChunks()
+    {
+        foreach (Chunk chunk in chunks)
+        {
+            BuildMesh(chunk);
         }
     }
 
