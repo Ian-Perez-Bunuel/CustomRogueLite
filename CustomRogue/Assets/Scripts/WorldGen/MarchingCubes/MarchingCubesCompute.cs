@@ -76,7 +76,6 @@ public class MarchingCubesCompute : MonoBehaviour
     }
 
     // Builds the mesh without re-generating it's noise. Instead goes off of it's current point values
-    // Could call this when an event is called (Invoke). So when ground is broken or built on
     void RebuildMesh(Chunk chunk)
     {
         int numVoxelsPerAxis = numPointsPerAxis - 1;
@@ -112,12 +111,13 @@ public class MarchingCubesCompute : MonoBehaviour
             }
         }
 
-        Mesh mesh = new Mesh();
-        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        Mesh mesh = chunk.GetMesh();
+        mesh.Clear();
+
         mesh.vertices = meshVertices;
         mesh.triangles = meshTriangles;
         mesh.RecalculateNormals();
-        chunk.SetMesh(mesh);
+        chunk.SetCollider();
         chunk.valuesChanged = false;
     }
 
@@ -263,12 +263,69 @@ public class MarchingCubesCompute : MonoBehaviour
         {
             UpdateWorld();
         }
+    }
 
-        foreach(Chunk chunk in chunks)
+    private void FixedUpdate()
+    {
+        foreach (Chunk chunk in chunks)
         {
             if (chunk.valuesChanged)
             {
                 RebuildMesh(chunk);
+            }
+        }
+    }
+
+    public Chunk GetChunkFromCoord(Vector3Int coord)
+    {
+        if (coord.x < 0 || coord.x >= worldBounds.x ||
+            coord.y < 0 || coord.y >= worldBounds.y ||
+            coord.z < 0 || coord.z >= worldBounds.z)
+        {
+            return null;
+        }
+
+        int index = coord.x * ((int)worldBounds.y * (int)worldBounds.z)
+                  + coord.y * (int)worldBounds.z
+                  + coord.z;
+
+        return chunks[index];
+    }
+
+    public void EditSphere(Vector3 worldPos, float radius, bool breaking)
+    {
+        // World-space AABB of the sphere
+        Vector3 min = worldPos - Vector3.one * radius;
+        Vector3 max = worldPos + Vector3.one * radius;
+
+        // Convert to chunk coordinates
+        Vector3Int minCoord = WorldToChunkCoord(min);
+        Vector3Int maxCoord = WorldToChunkCoord(max);
+
+        // Clamp to world bounds
+        minCoord.x = Mathf.Clamp(minCoord.x, 0, (int)worldBounds.x - 1);
+        minCoord.y = Mathf.Clamp(minCoord.y, 0, (int)worldBounds.y - 1);
+        minCoord.z = Mathf.Clamp(minCoord.z, 0, (int)worldBounds.z - 1);
+
+        maxCoord.x = Mathf.Clamp(maxCoord.x, 0, (int)worldBounds.x - 1);
+        maxCoord.y = Mathf.Clamp(maxCoord.y, 0, (int)worldBounds.y - 1);
+        maxCoord.z = Mathf.Clamp(maxCoord.z, 0, (int)worldBounds.z - 1);
+
+        // Loop through all potentially affected chunks
+        for (int x = minCoord.x; x <= maxCoord.x; x++)
+        {
+            for (int y = minCoord.y; y <= maxCoord.y; y++)
+            {
+                for (int z = minCoord.z; z <= maxCoord.z; z++)
+                {
+                    Chunk chunk = GetChunkFromCoord(new Vector3Int(x, y, z));
+                    if (chunk == null)
+                        continue;
+
+                    // This uses world-space positions stored in the buffer,
+                    // so we can pass the same worldPos & radius to every chunk.
+                    chunk.EditData(worldPos, radius, breaking);
+                }
             }
         }
     }

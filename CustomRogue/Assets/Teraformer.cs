@@ -5,6 +5,8 @@ public class Teraformer : MonoBehaviour
 {
     [SerializeField] MarchingCubesCompute world;
     public bool active;
+    public bool breaking;
+    public float radius;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -12,14 +14,20 @@ public class Teraformer : MonoBehaviour
         
     }
 
+    private void Update()
+    {
+        if (Input.GetKeyUp(KeyCode.E))
+        {
+            breaking = !breaking;
+        }
+    }
+
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         if (active)
         {
-            Chunk chunk = world.GetChunkFromWorldPos(transform.position);
-
-            chunk.EditData(transform.position, 2, true);
+            world.EditSphere(transform.position, radius, breaking);
         }
     }
 }

@@ -83,6 +83,10 @@ public class Chunk : MonoBehaviour
         meshCollider.sharedMesh = meshFilter.sharedMesh;
     }
 
+    public Mesh GetMesh() { return meshFilter.sharedMesh; }
+
+    public void SetCollider() { meshCollider.sharedMesh = meshFilter.sharedMesh; }
+
     public void ReleaseBuffers()
     {
         if (pointsBuffer != null)
