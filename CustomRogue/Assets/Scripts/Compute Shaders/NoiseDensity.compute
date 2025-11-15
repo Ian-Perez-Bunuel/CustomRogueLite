@@ -13,9 +13,9 @@ float weightMultiplier;
 float floorOffset;
 
 float verticalBiasStrength = 1.0f;
-float worldMinY;
+float3 worldMin;
 float middleFill;
-float worldMaxY;
+float3 worldMax;
 
 float4 params;
 
@@ -51,7 +51,7 @@ void Density(int3 id : SV_DispatchThreadID)
     }
     
     // 0 at bottom, 1 at top
-    float y01 = saturate((pos.y - worldMinY) / (worldMaxY - worldMinY));
+    float y01 = saturate((pos.y - worldMin.y) / (worldMax.y - worldMin.y));
     
     // 1 at bottom & top, 0 in the middle
     float edgeBias = abs(y01 - 0.5) * 2.0;
@@ -60,8 +60,11 @@ void Density(int3 id : SV_DispatchThreadID)
     
     float noiseVal = noise * noiseWeight;
     
-    float finalVal = verticalBias - noiseVal;
+    float finalRaw = verticalBias - noiseVal;
 
+    // Normalise to roughly [-1,1]
+    const float finalScale = 1.0; 
+    float finalVal = finalRaw / finalScale;
 
     int index = indexFromCoord(id.x, id.y, id.z);
     points[index] = float4(pos, finalVal);

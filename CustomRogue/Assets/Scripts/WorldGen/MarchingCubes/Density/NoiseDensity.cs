@@ -35,8 +35,8 @@ public class NoiseDensity : DensityGenerator
         }
 
         // Get the world's min and max
-        float worldMinY = 0f;
-        float worldMaxY = worldBounds.y * boundsSize;
+        Vector3 worldMin = Vector3.zero;
+        Vector3 worldMax = worldBounds * boundsSize;
 
         var offsetsBuffer = new ComputeBuffer(offsets.Length, sizeof(float) * 3); // an array of float3 values, one for each noise octave(more on octaves in a moment).
         offsetsBuffer.SetData(offsets);
@@ -52,9 +52,9 @@ public class NoiseDensity : DensityGenerator
         densityShader.SetFloat("weightMultiplier", weightMultiplier);
         // Vertical changes
         densityShader.SetFloat("verticalBiasStrength", verticalBiasStrength);
-        densityShader.SetFloat("worldMinY", worldMinY);
+        densityShader.SetVector("worldMin", worldMin);
         densityShader.SetFloat("middleFill", middleFill);
-        densityShader.SetFloat("worldMaxY", worldMaxY);
+        densityShader.SetVector("worldMax", worldMax);
 
         densityShader.SetBuffer(0, "offsets", offsetsBuffer);
 
