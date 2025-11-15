@@ -518,6 +518,62 @@ RectTransform:
   m_AnchoredPosition: {x: -5, y: 0}
   m_SizeDelta: {x: -20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &230642172
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 230642174}
+  - component: {fileID: 230642173}
+  m_Layer: 0
+  m_Name: SphereDensity
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &230642173
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 230642172}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4f9e42caae93ad4393d64758da9dbb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  densityShader: {fileID: 0}
+  seed: 0
+  numOctaves: 4
+  lacunarity: 2
+  persistence: 0.5
+  noiseScale: 1
+  noiseWeight: 1
+  weightMultiplier: 1
+  floorOffset: 1
+  roughness: 0
+  radius: 0
+  shaderParams: {x: 0, y: 0, z: 0, w: 0}
+--- !u!4 &230642174
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 230642172}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &236937952
 GameObject:
   m_ObjectHideFlags: 0
@@ -2761,8 +2817,8 @@ MonoBehaviour:
   worldBounds: {x: 6, y: 4, z: 6}
   chunkHolder: {fileID: 2143664566}
   material: {fileID: 2100000, guid: a89d3c28bf7df684b9653165f700fd25, type: 2}
-  surfaceLevel: 0
-  boundsSize: 40
+  surfaceLevel: 0.25
+  boundsSize: 35
   offset: {x: 0, y: 0, z: 0}
   numPointsPerAxis: 30
 --- !u!4 &1138670070
@@ -4738,6 +4794,7 @@ SceneRoots:
   - {fileID: 1791820371}
   - {fileID: 592133680}
   - {fileID: 616050279}
+  - {fileID: 230642174}
   - {fileID: 1138670070}
   - {fileID: 2143664567}
   - {fileID: 1144017781}

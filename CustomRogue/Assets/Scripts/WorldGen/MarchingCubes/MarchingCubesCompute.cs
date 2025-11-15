@@ -5,7 +5,6 @@ using Unity.VisualScripting;
 using UnityEngine;
 using static UnityEngine.EventSystems.EventTrigger;
 
-[ExecuteInEditMode]
 public class MarchingCubesCompute : MonoBehaviour
 {
     [StructLayout(LayoutKind.Sequential)]
@@ -46,7 +45,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
     [Header("Voxel Settings")]
     public Material material;
-    public float surfaceLevel;
+    public float surfaceLevel; // If value > surfaceLevel then it's solid
     public float boundsSize = 1;
     public Vector3 offset = Vector3.zero;
 
@@ -56,8 +55,8 @@ public class MarchingCubesCompute : MonoBehaviour
     // Buffers
     int kernel;
     ComputeBuffer triangleBuffer;
-    ComputeBuffer pointsBuffer;
     ComputeBuffer triCountBuffer;
+    ComputeBuffer pointsBuffer;
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created

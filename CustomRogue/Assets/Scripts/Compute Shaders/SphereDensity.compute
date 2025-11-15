@@ -1,0 +1,79 @@
+#pragma kernel Density
+#include "Includes/Density.hlsl"
+#include "Includes/Noise.hlsl"
+
+// Noise settings
+StructuredBuffer<float3> offsets;
+int octaves;
+float lacunarity;
+float persistence;
+float noiseScale;
+float noiseWeight;
+float weightMultiplier;
+float floorOffset;
+
+float verticalBiasStrength = 1.0f;
+float3 worldMin;
+float3 worldMax;
+
+float radius;
+float mountianFrequency;
+float mountianHeight;
+
+float4 params;
+
+[numthreads(numThreads, numThreads, numThreads)]
+void Density(int3 id : SV_DispatchThreadID)
+{
+    if (id.x >= numPointsPerAxis || id.y >= numPointsPerAxis || id.z >= numPointsPerAxis)
+    {
+        return;
+    }
+
+    float3 pos = centre + id * spacing - boundsSize / 2;
+    float offsetNoise = 0;
+
+    float noise = 0; // will store the final combined noise value from all octaves.
+
+    float frequency = noiseScale / 100; // starting frequency of the noise (how zoomed in / out).
+    float amplitude = 1;
+    float weight = 1; // used for a "ridged" / sharper noise effect inside the loop
+    for (int j = 0; j < octaves; j++)
+    {
+        float n = snoise((pos + offsetNoise) * frequency + offsets[j] + offset); // Basic noise (range: -1, 1)
+        // Sharpening
+        float v = 1 - abs(n);
+        v = v * v;
+        // Apply updated weight
+        v *= weight;
+        weight = max(min(v * weightMultiplier, 1), 0);
+        // Add to total noise and update frequency / amplitude
+        noise += v * amplitude;
+        amplitude *= persistence;
+        frequency *= lacunarity;
+    }
+    
+    float3 worldCenter = (worldMin + worldMax) * 0.5f;
+    float3 toCenter = pos - worldCenter;
+    float dist = length(toCenter);
+    float3 dir = toCenter / max(dist, 0.0001); // normalized direction
+    
+    // Big-scale noise for mountains
+    float bigN = snoise(dir * mountianFrequency + offset); // use direction so it's "wrapped" on the sphere
+    // Map from [-1,1] to [0,1] or keep as is if you like sharp ridges
+    float bigNoise01 = bigN * 0.5 + 0.5; // 0..1
+
+    float effectiveRadius = radius + bigNoise01 * mountianHeight;
+    float sphereField = effectiveRadius - dist;
+    float edgeMask = 1.0 - saturate(abs(sphereField) / 2.0f);
+    
+    float finalRaw = sphereField + noise * edgeMask;
+
+    // Normalise to roughly [-1,1]
+    const float finalScale = 1.0;
+    float finalVal = finalRaw / finalScale;
+
+    int index = indexFromCoord(id.x, id.y, id.z);
+    points[index] = float4(pos, finalVal);
+    
+}
