@@ -1,27 +1,23 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using UnityEngine;
+using static UnityEditor.Experimental.GraphView.GraphView;
 
 public class NoiseDensity : DensityGenerator
 {
-
     [Header("Noise")]
     public int seed;
-    public int numOctaves = 4;
-    public float lacunarity = 2;
-    public float persistence = .5f;
-    public float noiseScale = 1;
-    public float noiseWeight = 1;
-    public bool closeEdges;
-    public float floorOffset = 1;
-    public float weightMultiplier = 1;
+    public int numOctaves = 4;          // how many layers of noise you stack.
+    public float lacunarity = 2;        // how much the frequency of noise increases each octave.
+    public float persistence = .5f;     // how much the amplitude(strength) of noise decreases each octave.
+    public float noiseScale = 1;        // overall scale(zoom) of your noise. (Also the frequency after / by 100)
+    public float noiseWeight = 1;       // how strongly noise affects your final density.
+    public float weightMultiplier = 1;  // used in the fancy weight logic inside the loop.
+    public float floorOffset = 1;       // pushes the “floor” of your terrain up/down.
+    public float verticalBiasStrength;  // strength of the vertical split of density
 
-    public float hardFloorHeight;
-    public float hardFloorWeight;
-
-    public float hardRoofHeight;
-    public float hardRoofWeight;
-
+    public float middleFill;
 
     public Vector4 shaderParams;
 
@@ -38,7 +34,11 @@ public class NoiseDensity : DensityGenerator
             offsets[i] = new Vector3((float)prng.NextDouble() * 2 - 1, (float)prng.NextDouble() * 2 - 1, (float)prng.NextDouble() * 2 - 1) * offsetRange;
         }
 
-        var offsetsBuffer = new ComputeBuffer(offsets.Length, sizeof(float) * 3);
+        // Get the world's min and max
+        float worldMinY = 0f;
+        float worldMaxY = worldBounds.y * boundsSize;
+
+        var offsetsBuffer = new ComputeBuffer(offsets.Length, sizeof(float) * 3); // an array of float3 values, one for each noise octave(more on octaves in a moment).
         offsetsBuffer.SetData(offsets);
         buffersToRelease.Add(offsetsBuffer);
 
@@ -48,14 +48,15 @@ public class NoiseDensity : DensityGenerator
         densityShader.SetFloat("persistence", persistence);
         densityShader.SetFloat("noiseScale", noiseScale);
         densityShader.SetFloat("noiseWeight", noiseWeight);
-        densityShader.SetBool("closeEdges", closeEdges);
-        densityShader.SetBuffer(0, "offsets", offsetsBuffer);
         densityShader.SetFloat("floorOffset", floorOffset);
         densityShader.SetFloat("weightMultiplier", weightMultiplier);
-        densityShader.SetFloat("hardFloor", hardFloorHeight);
-        densityShader.SetFloat("hardFloorWeight", hardFloorWeight);
-        densityShader.SetFloat("hardRoof", hardRoofHeight);
-        densityShader.SetFloat("hardRoofWeight", hardRoofWeight);
+        // Vertical changes
+        densityShader.SetFloat("verticalBiasStrength", verticalBiasStrength);
+        densityShader.SetFloat("worldMinY", worldMinY);
+        densityShader.SetFloat("middleFill", middleFill);
+        densityShader.SetFloat("worldMaxY", worldMaxY);
+
+        densityShader.SetBuffer(0, "offsets", offsetsBuffer);
 
         densityShader.SetVector("params", shaderParams);
 

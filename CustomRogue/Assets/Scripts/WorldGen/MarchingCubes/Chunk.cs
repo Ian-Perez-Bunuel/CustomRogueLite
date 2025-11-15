@@ -5,6 +5,7 @@ public class Chunk : MonoBehaviour
     // Mesh
     MeshFilter meshFilter;
     MeshRenderer meshRenderer;
+    MeshCollider meshCollider;
 
     Vector3Int coords;
 
@@ -14,6 +15,10 @@ public class Chunk : MonoBehaviour
         if (GetComponent<MeshFilter>() == null)
         {
             meshFilter = gameObject.AddComponent<MeshFilter>();
+        }
+        if (GetComponent<MeshCollider>() == null)
+        {
+            meshCollider = gameObject.AddComponent<MeshCollider>();
         }
         if (GetComponent<MeshRenderer>() == null)
         {
@@ -32,6 +37,7 @@ public class Chunk : MonoBehaviour
     
     public void SetMesh(Mesh mesh)
     {
-        meshFilter.mesh = mesh;
+        meshFilter.sharedMesh = mesh;
+        meshCollider.sharedMesh = meshFilter.sharedMesh;
     }
 }

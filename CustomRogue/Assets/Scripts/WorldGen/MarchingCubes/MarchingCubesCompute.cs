@@ -74,13 +74,6 @@ public class MarchingCubesCompute : MonoBehaviour
 
     Vector3 CentreFromCoord(Vector3Int coord)
     {
-        // Centre entire map at origin
-        //if (fixedMapSize)
-        //{
-        //    Vector3 totalBounds = (Vector3)numChunks * boundsSize;
-        //    return -totalBounds / 2 + (Vector3)coord * boundsSize + Vector3.one * boundsSize / 2;
-        //}
-
         return new Vector3(coord.x, coord.y, coord.z) * boundsSize;
     }
 
@@ -182,6 +175,7 @@ public class MarchingCubesCompute : MonoBehaviour
         GameObject chunk = new GameObject($"Chunk ({coord.x}, {coord.y}, {coord.z})");
         chunk.transform.parent = chunkHolder.transform;
         Chunk newChunk = chunk.AddComponent<Chunk>();
+        newChunk.gameObject.layer = newChunk.transform.parent.gameObject.layer;
         newChunk.SetCoords(coord);
         return newChunk;
     }
@@ -211,7 +205,7 @@ public class MarchingCubesCompute : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyUp(KeyCode.Space))
+        if (Input.GetKeyUp(KeyCode.F))
         {
             UpdateWorld();
         }
