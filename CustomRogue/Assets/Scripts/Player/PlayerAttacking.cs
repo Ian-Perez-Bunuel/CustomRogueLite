@@ -21,7 +21,7 @@ public class PlayerAttacking : MonoBehaviour
     private bool groundPoundActive = false;
     public GameObject tempCrater;
 
-    public Teraformer debugBall;
+    public Terraformer debugBall;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -81,7 +81,7 @@ public class PlayerAttacking : MonoBehaviour
 
         if (stateManager.OnSlope())
         {
-            impulseDir = stateManager.slopeHit.normal * slamPower;
+            impulseDir = stateManager.raycastHit.normal * slamPower;
         }
         else
         {

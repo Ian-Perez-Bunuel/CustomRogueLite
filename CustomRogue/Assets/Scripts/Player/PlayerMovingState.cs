@@ -45,7 +45,7 @@ public class PlayerMovingState : PlayerBaseState
         if (player.OnSlope())
         {
             // Project input onto slope so you move along the surface
-            Vector3 slopeMove = Vector3.ProjectOnPlane(inputWorld, player.slopeHit.normal).normalized;
+            Vector3 slopeMove = Vector3.ProjectOnPlane(inputWorld, player.raycastHit.normal).normalized;
 
             movement = slopeMove * player.groundedSpeed * 10f;
 
@@ -76,6 +76,6 @@ public class PlayerMovingState : PlayerBaseState
 
     private Vector3 GetSlopeMoveDirection(PlayerStateManager player)
     {
-        return Vector3.ProjectOnPlane(moveDirection, player.slopeHit.normal);
+        return Vector3.ProjectOnPlane(moveDirection, player.raycastHit.normal);
     }
 }

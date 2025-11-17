@@ -1,4 +1,5 @@
 using UnityEngine;
+using static UnityEditor.PlayerSettings;
 
 public class Chunk : MonoBehaviour
 {
@@ -38,7 +39,7 @@ public class Chunk : MonoBehaviour
     }
 
     // Pass the position and area you want to edit and it will change it's values
-    public void EditData(Vector3 t_pos, float t_radius, bool t_breaking)
+    public void EditSphere(Vector3 t_pos, float t_radius, bool t_breaking)
     {
         // Read all points
         Vector4[] data = new Vector4[numPoints];
@@ -85,7 +86,10 @@ public class Chunk : MonoBehaviour
 
     public Mesh GetMesh() { return meshFilter.sharedMesh; }
 
-    public void SetCollider() { meshCollider.sharedMesh = meshFilter.sharedMesh; }
+    public void SetCollider() 
+    {
+        meshCollider.sharedMesh = meshFilter.sharedMesh; 
+    }
 
     public void ReleaseBuffers()
     {

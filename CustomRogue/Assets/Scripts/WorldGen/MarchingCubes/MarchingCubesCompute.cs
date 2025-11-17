@@ -324,7 +324,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
                     // This uses world-space positions stored in the buffer,
                     // so we can pass the same worldPos & radius to every chunk.
-                    chunk.EditData(worldPos, radius, breaking);
+                    chunk.EditSphere(worldPos, radius, breaking);
                 }
             }
         }

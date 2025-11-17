@@ -34,12 +34,13 @@ public class PlayerStateManager : MonoBehaviour
 
     [Header("Ground Check")]
     public float height;
+    public float sphereCastRadius;
+    [HideInInspector] public RaycastHit raycastHit;
     public LayerMask groundLayerMask;
     public bool grounded;
 
     [Header("SlopeHandeling")]
     public float maxSlopeAngle;
-    [HideInInspector] public RaycastHit slopeHit;
 
     // Start is called before the first frame update
     void Start()
@@ -61,7 +62,7 @@ public class PlayerStateManager : MonoBehaviour
     void FixedUpdate()
     {
         // Ground check
-        grounded = Physics.Raycast(transform.position, Vector3.down, height * 0.5f + 0.2f, groundLayerMask);
+        grounded = Physics.SphereCast(transform.position, sphereCastRadius, Vector3.down, out raycastHit, height * 0.5f + 0.2f, groundLayerMask);
 
         // Treat gentle slopes as ground => disable custom gravity there
         useGravity = !OnSlope();
@@ -111,9 +112,9 @@ public class PlayerStateManager : MonoBehaviour
     public bool OnSlope()
     {
         // Slightly longer ray than the player to be safe
-        if (Physics.Raycast(transform.position, Vector3.down, out slopeHit, height * 0.5f + 0.3f, groundLayerMask))
+        if (raycastHit.collider != null)
         {
-            float angle = Vector3.Angle(Vector3.up, slopeHit.normal);
+            float angle = Vector3.Angle(Vector3.up, raycastHit.normal);
             return angle > 0f && angle <= maxSlopeAngle;
         }
         return false;
