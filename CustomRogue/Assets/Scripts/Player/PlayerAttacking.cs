@@ -21,7 +21,8 @@ public class PlayerAttacking : MonoBehaviour
     private bool groundPoundActive = false;
     public GameObject tempCrater;
 
-    public Terraformer debugBall;
+    public GameObject bomb;
+    public Transform attackPos;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -36,10 +37,6 @@ public class PlayerAttacking : MonoBehaviour
         if (canAttack && attack.action.IsPressed())
         {
             Attack();
-        }
-        else
-        {
-            debugBall.active = false;
         }
 
         if (slam.action.WasPressedThisFrame())
@@ -73,7 +70,8 @@ public class PlayerAttacking : MonoBehaviour
         // Do attack Logic
         // Attack Cooldown
 
-        debugBall.active = true;
+        GameObject terraformerObj = Instantiate(bomb, attackPos.position, Quaternion.identity);
+        terraformerObj.GetComponent<CollisionTerraformer>().AddForceInDir(transform.forward);
     }
     private void Slam()
     {

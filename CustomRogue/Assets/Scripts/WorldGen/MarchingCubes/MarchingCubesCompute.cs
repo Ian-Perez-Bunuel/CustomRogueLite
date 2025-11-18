@@ -68,6 +68,8 @@ public class MarchingCubesCompute : MonoBehaviour
         computeShader.SetInt("numPointsPerAxis", numPointsPerAxis);
 
         chunks = new List<Chunk>();
+
+        UpdateWorld();
     }
 
     Vector3 CentreFromCoord(Vector3Int coord)
@@ -256,14 +258,13 @@ public class MarchingCubesCompute : MonoBehaviour
         BuildAllChunks();
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        if (Input.GetKeyUp(KeyCode.F))
-        {
-            UpdateWorld();
-        }
-    }
+    //void Update()
+    //{
+        //if (Input.GetKeyUp(KeyCode.F))
+        //{
+        //    UpdateWorld();
+        //}
+    //}
 
     private void FixedUpdate()
     {

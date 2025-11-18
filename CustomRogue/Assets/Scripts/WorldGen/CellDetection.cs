@@ -6,6 +6,7 @@ public class CellDetection : MonoBehaviour
     {
         GetComponent<Renderer>().enabled = false;
     }
+
     private void OnTriggerEnter(Collider other)
     {
         GetComponent<Renderer>().enabled = true;

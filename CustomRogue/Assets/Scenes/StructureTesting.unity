@@ -292,7 +292,7 @@ MonoBehaviour:
   cellPrefab: {fileID: 6401475588075885883, guid: 1e29dc0defabcae46972f674c5d96336, type: 3}
   cells: []
   voxelParent: {fileID: 1356445046}
-  resolution: 0.25
+  resolution: 0.1
 --- !u!54 &739166373
 Rigidbody:
   m_ObjectHideFlags: 0
