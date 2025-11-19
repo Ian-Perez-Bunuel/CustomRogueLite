@@ -17,7 +17,7 @@ public class CollisionTerraformer : Terraformer
 
     public override void Edit()
     {
-        float densityChange = (breaking == true) ? -0.1f : 0.1f;
+        float densityChange = (breaking == true) ? -1f : 1f;
         float radiusSq = editRadius * editRadius;
 
         computeEditting.SetFloat("radius", editRadius);
@@ -31,8 +31,7 @@ public class CollisionTerraformer : Terraformer
     private void OnCollisionEnter(Collision collision)
     {
         Edit();
-
-        Destroy(gameObject);
+        gameObject.SetActive(false);
     }
 
     public void AddForceInDir(Vector3 dir)

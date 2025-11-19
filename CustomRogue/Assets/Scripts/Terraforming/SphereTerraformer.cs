@@ -9,18 +9,15 @@ public class SphereTerraformer : Terraformer
 
     public override void Edit()
     {
-        if (active)
-        {
-            float densityChange = (breaking == true) ? -0.1f : 0.1f;
-            float radiusSq = radius * radius;
+        float densityChange = (breaking == true) ? -0.1f : 0.1f;
+        float radiusSq = radius * radius;
 
-            computeEditting.SetFloat("radius", radius);
-            computeEditting.SetFloat("densityChange", densityChange);
-            computeEditting.SetFloat("radiusSq", radiusSq);
-            computeEditting.SetVector("sphereCenter", transform.position);
+        computeEditting.SetFloat("radius", radius);
+        computeEditting.SetFloat("densityChange", densityChange);
+        computeEditting.SetFloat("radiusSq", radiusSq);
+        computeEditting.SetVector("sphereCenter", transform.position);
 
-            world.EditSphere(computeEditting, transform.position, radius);
-        }
+        world.EditSphere(computeEditting, transform.position, radius);
     }
 
     private void FixedUpdate()

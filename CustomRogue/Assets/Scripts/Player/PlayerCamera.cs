@@ -14,10 +14,6 @@ public class PlayerCamera : MonoBehaviour
     public float sensX = 1.0f;
     public float sensY = 1.0f;
 
-    [SerializeField] Transform debugSphere;
-    bool hitObj;
-    RaycastHit raycastHit;
-
 
     private void Start()
     {
@@ -50,14 +46,6 @@ public class PlayerCamera : MonoBehaviour
         if (orientation != null)
         {
             orientation.rotation = Quaternion.Euler(0f, yRotation, 0f);
-        }
-
-        Ray myRay = new Ray(transform.position, transform.forward);
-        hitObj = Physics.Raycast(myRay, out raycastHit);
-
-        if (hitObj && raycastHit.collider.tag != "Player")
-        {
-            debugSphere.position = raycastHit.point;
         }
     }
 }

@@ -9,13 +9,12 @@ int numPointsPerAxis;
 float3 sphereCenter;
 float radiusSq;
 
-// 1 == breaking, 0 == adding
 float densityChange; 
 
 [numthreads(numThreads, numThreads, numThreads)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    // Stop one point before the end because voxel includes neighbouring points
+    // Stop if out of range
     if (id.x >= numPointsPerAxis || id.y >= numPointsPerAxis || id.z >= numPointsPerAxis)
     {
         return;

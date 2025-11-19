@@ -10,19 +10,19 @@ public class PlayerAttacking : MonoBehaviour
 
     [Header("Attack")]
     public InputActionReference attack;
+    [SerializeField] Terraformer attackTerraformer;
     private bool canAttack = true;
 
     [Header("Slam")]
     public InputActionReference slam;
     public float slamPower;
+    [SerializeField] Terraformer slamTerraformer;
     [Header("GroundPound")]
     public float groundPoundPower;
     public float groundPoundDelayAmount;
     private bool groundPoundActive = false;
     public GameObject tempCrater;
 
-    public GameObject bomb;
-    public Transform attackPos;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -54,14 +54,17 @@ public class PlayerAttacking : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (stateManager.grounded && groundPoundActive)
+        if (groundPoundActive)
         {
-            // Temp
-            Vector3 feetTransform = new Vector3(transform.position.x, transform.position.y - stateManager.height / 2f, transform.position.z); ;
-            Instantiate(tempCrater, feetTransform, Quaternion.identity);
-            //
+            // Add Impulse downwards
+            rb.AddForce(Vector3.down * groundPoundPower, ForceMode.Impulse);
 
-            groundPoundActive = false;
+            if (stateManager.grounded)
+            {
+                slamTerraformer.gameObject.SetActive(true);
+
+                groundPoundActive = false;
+            }
         }
     }
 
@@ -69,13 +72,13 @@ public class PlayerAttacking : MonoBehaviour
     {
         // Do attack Logic
         // Attack Cooldown
-
-        GameObject terraformerObj = Instantiate(bomb, attackPos.position, Quaternion.identity);
-        terraformerObj.GetComponent<CollisionTerraformer>().AddForceInDir(transform.forward);
     }
     private void Slam()
     {
         Vector3 impulseDir;
+
+        // Spawn crater
+        slamTerraformer.gameObject.SetActive(true);
 
         if (stateManager.OnSlope())
         {
@@ -96,9 +99,6 @@ public class PlayerAttacking : MonoBehaviour
     IEnumerator GroundPoundDelay()
     {
         yield return new WaitForSeconds(groundPoundDelayAmount);
-        // Add Impulse downwards
-        //rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-        rb.AddForce(Vector3.down * groundPoundPower, ForceMode.Impulse);
 
         groundPoundActive = true;
     }
