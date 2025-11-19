@@ -3,6 +3,7 @@ using UnityEngine.LightTransport;
 
 public class SphereTerraformer : Terraformer
 {
+    public ComputeShader computeEditting;
     public float radius;
 
 
@@ -10,7 +11,15 @@ public class SphereTerraformer : Terraformer
     {
         if (active)
         {
-            world.EditSphere(transform.position, radius, breaking);
+            float densityChange = (breaking == true) ? -0.1f : 0.1f;
+            float radiusSq = radius * radius;
+
+            computeEditting.SetFloat("radius", radius);
+            computeEditting.SetFloat("densityChange", densityChange);
+            computeEditting.SetFloat("radiusSq", radiusSq);
+            computeEditting.SetVector("sphereCenter", transform.position);
+
+            world.EditSphere(computeEditting, transform.position, radius);
         }
     }
 

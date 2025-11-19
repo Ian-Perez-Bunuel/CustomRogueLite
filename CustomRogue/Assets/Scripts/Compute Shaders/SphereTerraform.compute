@@ -1,0 +1,37 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+static const int numThreads = 8;
+
+RWStructuredBuffer<float4> points;
+int numPointsPerAxis;
+
+float3 sphereCenter;
+float radiusSq;
+
+// 1 == breaking, 0 == adding
+float densityChange; 
+
+[numthreads(numThreads, numThreads, numThreads)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    // Stop one point before the end because voxel includes neighbouring points
+    if (id.x >= numPointsPerAxis || id.y >= numPointsPerAxis || id.z >= numPointsPerAxis)
+    {
+        return;
+    }
+    
+    uint index = id.x + id.y * numPointsPerAxis+ id.z * numPointsPerAxis * numPointsPerAxis;
+
+    float4 p = points[index];
+    float3 pos = p.xyz;
+
+    float3 diff = pos - sphereCenter;
+    float distSq = dot(diff, diff);
+
+    if (distSq <= radiusSq)
+    {
+        p.w += densityChange;
+        points[index] = p;
+    }
+}

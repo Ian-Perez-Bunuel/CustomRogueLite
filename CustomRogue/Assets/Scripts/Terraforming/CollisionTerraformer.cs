@@ -4,6 +4,7 @@ using UnityEngine;
 [RequireComponent (typeof(Collider))]
 public class CollisionTerraformer : Terraformer
 {
+    public ComputeShader computeEditting;
     public float editRadius;
     Rigidbody rb;
 
@@ -16,7 +17,15 @@ public class CollisionTerraformer : Terraformer
 
     public override void Edit()
     {
-        world.EditSphere(transform.position, editRadius, breaking);
+        float densityChange = (breaking == true) ? -0.1f : 0.1f;
+        float radiusSq = editRadius * editRadius;
+
+        computeEditting.SetFloat("radius", editRadius);
+        computeEditting.SetFloat("densityChange", densityChange);
+        computeEditting.SetFloat("radiusSq", radiusSq);
+        computeEditting.SetVector("sphereCenter", transform.position);
+
+        world.EditSphere(computeEditting, transform.position, editRadius);
     }
 
     private void OnCollisionEnter(Collision collision)

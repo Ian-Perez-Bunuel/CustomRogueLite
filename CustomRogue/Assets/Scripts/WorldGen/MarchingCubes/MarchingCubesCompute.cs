@@ -293,7 +293,7 @@ public class MarchingCubesCompute : MonoBehaviour
         return chunks[index];
     }
 
-    public void EditSphere(Vector3 worldPos, float radius, bool breaking)
+    public void EditSphere(ComputeShader computeEditting, Vector3 worldPos, float radius)
     {
         // World-space AABB of the sphere
         Vector3 min = worldPos - Vector3.one * radius;
@@ -312,6 +312,9 @@ public class MarchingCubesCompute : MonoBehaviour
         maxCoord.y = Mathf.Clamp(maxCoord.y, 0, (int)worldBounds.y - 1);
         maxCoord.z = Mathf.Clamp(maxCoord.z, 0, (int)worldBounds.z - 1);
 
+        int numVoxelsPerAxis = numPointsPerAxis - 1;
+        int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
+
         // Loop through all potentially affected chunks
         for (int x = minCoord.x; x <= maxCoord.x; x++)
         {
@@ -325,7 +328,12 @@ public class MarchingCubesCompute : MonoBehaviour
 
                     // This uses world-space positions stored in the buffer,
                     // so we can pass the same worldPos & radius to every chunk.
-                    chunk.EditSphere(worldPos, radius, breaking);
+                    computeEditting.SetBuffer(kernel, "points", chunk.pointsBuffer);
+                    computeEditting.SetInt("numPointsPerAxis", numPointsPerAxis);
+                    // Other variables are passed in the terraformer
+
+                    computeEditting.Dispatch(0, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
+                    chunk.valuesChanged = true;
                 }
             }
         }

@@ -51,6 +51,7 @@ MonoBehaviour:
   world: {fileID: 0}
   active: 0
   breaking: 1
+  computeEditting: {fileID: 7200000, guid: 1a69e51c793bc494081a3e20228caeb4, type: 3}
   editRadius: 5
 --- !u!33 &8445270865415833948
 MeshFilter:
