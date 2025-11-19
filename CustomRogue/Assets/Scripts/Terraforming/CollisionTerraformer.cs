@@ -8,6 +8,8 @@ public class CollisionTerraformer : Terraformer
     public float editRadius;
     Rigidbody rb;
 
+    public float terraformAmount = 0.1f;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
@@ -17,7 +19,7 @@ public class CollisionTerraformer : Terraformer
 
     public override void Edit()
     {
-        float densityChange = (breaking == true) ? -1f : 1f;
+        float densityChange = (breaking == true) ? -terraformAmount : terraformAmount;
         float radiusSq = editRadius * editRadius;
 
         computeEditting.SetFloat("radius", editRadius);

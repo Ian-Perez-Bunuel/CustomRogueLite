@@ -4,14 +4,18 @@ using UnityEngine.InputSystem;
 
 public class PlayerAttacking : MonoBehaviour
 {
-
     private PlayerStateManager stateManager;
     private Rigidbody rb;
+
+    public Transform facing;
 
     [Header("Attack")]
     public InputActionReference attack;
     [SerializeField] Terraformer attackTerraformer;
     private bool canAttack = true;
+    public float attackCooldown;
+    [Header("Attack Raycast")]
+    public float attackRange;
 
     [Header("Slam")]
     public InputActionReference slam;
@@ -70,8 +74,26 @@ public class PlayerAttacking : MonoBehaviour
 
     private void Attack()
     {
-        // Do attack Logic
-        // Attack Cooldown
+        Vector3 origin = transform.position;
+        Vector3 direction = facing.forward;
+
+        // Raycast in direction facing
+        if (Physics.Raycast(origin, direction, out RaycastHit hit, attackRange))
+        {
+            // Hit something: place the attackTerraformer at the hit point
+            attackTerraformer.transform.position = hit.point;
+
+            // Activate the object
+            attackTerraformer.gameObject.SetActive(true);
+        }
+        else
+        {
+            // No hit - Place on player
+            attackTerraformer.transform.position = transform.position;
+        }
+
+        // Attack cooldown
+        StartCoroutine(AttackCooldown());
     }
     private void Slam()
     {
@@ -101,5 +123,14 @@ public class PlayerAttacking : MonoBehaviour
         yield return new WaitForSeconds(groundPoundDelayAmount);
 
         groundPoundActive = true;
+    }
+    
+    IEnumerator AttackCooldown()
+    {
+        canAttack = false;
+
+        yield return new WaitForSeconds(attackCooldown);
+
+        canAttack = true;
     }
 }

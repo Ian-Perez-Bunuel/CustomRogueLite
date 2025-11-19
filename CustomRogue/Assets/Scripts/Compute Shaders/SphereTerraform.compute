@@ -30,7 +30,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     if (distSq <= radiusSq)
     {
-        p.w += densityChange;
+        p.w = max(p.w + densityChange, 0.0);
         points[index] = p;
     }
 }
