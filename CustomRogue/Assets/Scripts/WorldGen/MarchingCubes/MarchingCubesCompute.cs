@@ -57,6 +57,13 @@ public class MarchingCubesCompute : MonoBehaviour
     ComputeBuffer triangleBuffer;
     ComputeBuffer triCountBuffer;
 
+    public Vector3 GetDimensions()
+    {
+        Vector3 dimensions = worldBounds;
+        dimensions *= boundsSize;
+
+        return dimensions;
+    }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()

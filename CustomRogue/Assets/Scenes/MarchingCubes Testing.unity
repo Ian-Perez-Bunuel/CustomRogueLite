@@ -321,6 +321,57 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1136284273
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1136284274}
+  - component: {fileID: 1136284275}
+  m_Layer: 0
+  m_Name: ObjectManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1136284274
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1136284273}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1136284275
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1136284273}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 020186af8b9bea741a2b1eef6f07aad2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  world: {fileID: 1138670069}
+  objPrefab: {fileID: 4922577520011255284, guid: fc4a2360399db094d90a28d556d968b4, type: 3}
+  amount: 500
+  placingArea: 1
+  layerMask:
+    serializedVersion: 2
+    m_Bits: 8
 --- !u!1 &1138670068
 GameObject:
   m_ObjectHideFlags: 0
@@ -425,6 +476,10 @@ PrefabInstance:
     - target: {fileID: 7132281203921914019, guid: b5f769ad00e330d489960d0b71d290a4, type: 3}
       propertyPath: m_TagString
       value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 7498666813216630305, guid: b5f769ad00e330d489960d0b71d290a4, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8020986630104831512, guid: b5f769ad00e330d489960d0b71d290a4, type: 3}
       propertyPath: m_LocalPosition.x
@@ -651,3 +706,4 @@ SceneRoots:
   - {fileID: 1144017781}
   - {fileID: 1598055799}
   - {fileID: 2925433}
+  - {fileID: 1136284274}
