@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 6325577391089107089}
   m_Layer: 0
   m_Name: BreakSphere
-  m_TagString: Player
+  m_TagString: Terraformer
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -99,8 +99,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a80dc1ce944033843b6d076631cd2811, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  world: {fileID: 0}
-  active: 0
   breaking: 1
   computeEditting: {fileID: 7200000, guid: 1a69e51c793bc494081a3e20228caeb4, type: 3}
   radius: 8

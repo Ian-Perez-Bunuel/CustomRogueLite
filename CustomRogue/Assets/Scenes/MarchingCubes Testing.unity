@@ -366,9 +366,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   world: {fileID: 1138670069}
-  objPrefab: {fileID: 4922577520011255284, guid: fc4a2360399db094d90a28d556d968b4, type: 3}
-  amount: 500
-  placingArea: 1
+  objPrefab: {fileID: 1710239625312051722, guid: 230c6dedd797e884b859ff5751beeceb, type: 3}
+  amount: 1000
+  placingArea: 0
   layerMask:
     serializedVersion: 2
     m_Bits: 8
@@ -434,20 +434,12 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 59918691964583053, guid: b5f769ad00e330d489960d0b71d290a4, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 59918691964583053, guid: b5f769ad00e330d489960d0b71d290a4, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 59918691964583053, guid: b5f769ad00e330d489960d0b71d290a4, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 59918691964583053, guid: b5f769ad00e330d489960d0b71d290a4, type: 3}
       propertyPath: m_LocalPosition.z
       value: 1.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 3067143735246544404, guid: b5f769ad00e330d489960d0b71d290a4, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5102753563855633288, guid: b5f769ad00e330d489960d0b71d290a4, type: 3}
       propertyPath: m_IsActive

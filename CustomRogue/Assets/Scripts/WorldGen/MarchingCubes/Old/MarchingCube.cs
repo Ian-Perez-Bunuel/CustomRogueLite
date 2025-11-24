@@ -10,8 +10,6 @@ public class MarchingCube : MonoBehaviour
         public Vector3 position;
         public bool active;
         public float value;
-
-        public Color color;
     };
 
     [SerializeField]Vertice[] cornerValues = new Vertice[8];

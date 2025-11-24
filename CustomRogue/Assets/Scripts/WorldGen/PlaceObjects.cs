@@ -1,5 +1,6 @@
 using TMPro.EditorUtilities;
 using UnityEngine;
+using UnityEngine.InputSystem.HID;
 using UnityEngine.XR;
 
 public class PlaceObjects : MonoBehaviour
@@ -61,7 +62,7 @@ public class PlaceObjects : MonoBehaviour
 
         if (Physics.Raycast(rayPos, transform.up, out hit, worldDimensions.y, layerMask))
         {
-            Instantiate(objPrefab, hit.point, Quaternion.identity);
+            InstantiateObject(hit.point);
         }
     }
 
@@ -85,7 +86,7 @@ public class PlaceObjects : MonoBehaviour
 
         if (Physics.Raycast(rayPos, -transform.up, out hit, worldDimensions.y, layerMask))
         {
-            Instantiate(objPrefab, hit.point, Quaternion.identity);
+            InstantiateObject(hit.point);
         }
     }
 
@@ -123,16 +124,23 @@ public class PlaceObjects : MonoBehaviour
             RaycastHit hit;
             if (Physics.Raycast(rayPos, -transform.up, out hit, worldDimensions.y, layerMask))
             {
-                Instantiate(objPrefab, hit.point, Quaternion.identity);
+                InstantiateObject(hit.point);
             }
 
             rayPos.y = 0;
             // Top
             if (Physics.Raycast(rayPos, transform.up, out hit, worldDimensions.y, layerMask))
             {
-                Instantiate(objPrefab, hit.point, Quaternion.identity);
+                InstantiateObject(hit.point);
             }
         }
+    }
+
+    void InstantiateObject(Vector3 pos)
+    {
+        Chunk chunk = world.GetChunkFromWorldPos(pos);
+        // Instantiate with parent of chunk it's in
+        Instantiate(objPrefab, pos, Quaternion.identity, chunk.transform);
     }
 
     private void Update()

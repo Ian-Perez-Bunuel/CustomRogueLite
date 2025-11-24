@@ -172,9 +172,6 @@ MonoBehaviour:
   attackTerraformer: {fileID: 3308687183609443398}
   attackCooldown: 0.25
   attackRange: 5
-  attackRaycastMask:
-    serializedVersion: 2
-    m_Bits: 8
   slam: {fileID: 5183248575466638448, guid: 0804d972e0ae4b44eb0a8af77e928fee, type: 3}
   slamPower: 100
   slamTerraformer: {fileID: 793265091725071447}
@@ -469,15 +466,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4247840070815020157, guid: 7a32a7f68eaea36499c2c4418fe09661, type: 3}
       propertyPath: m_LocalScale.x
-      value: 2
+      value: 2.5
       objectReference: {fileID: 0}
     - target: {fileID: 4247840070815020157, guid: 7a32a7f68eaea36499c2c4418fe09661, type: 3}
       propertyPath: m_LocalScale.y
-      value: 2
+      value: 2.5
       objectReference: {fileID: 0}
     - target: {fileID: 4247840070815020157, guid: 7a32a7f68eaea36499c2c4418fe09661, type: 3}
       propertyPath: m_LocalScale.z
-      value: 2
+      value: 2.5
       objectReference: {fileID: 0}
     - target: {fileID: 4247840070815020157, guid: 7a32a7f68eaea36499c2c4418fe09661, type: 3}
       propertyPath: m_LocalPosition.x

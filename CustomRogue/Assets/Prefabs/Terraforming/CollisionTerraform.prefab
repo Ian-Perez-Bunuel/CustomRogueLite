@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: 7249390916610084256}
   m_Layer: 6
   m_Name: CollisionTerraform
-  m_TagString: Untagged
+  m_TagString: Terraformer
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -48,11 +48,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e89436bc210f749a586f1f403683b2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  world: {fileID: 0}
-  active: 0
   breaking: 1
   computeEditting: {fileID: 7200000, guid: 1a69e51c793bc494081a3e20228caeb4, type: 3}
   editRadius: 5
+  terraformAmount: 0.1
 --- !u!33 &8445270865415833948
 MeshFilter:
   m_ObjectHideFlags: 0
