@@ -47,7 +47,7 @@ public class PlayerMovingState : PlayerBaseState
             // Project input onto slope so you move along the surface
             Vector3 slopeMove = Vector3.ProjectOnPlane(inputWorld, player.raycastHit.normal).normalized;
 
-            movement = slopeMove * player.groundedSpeed * 10f;
+            movement = slopeMove * player.groundedSpeed * 20f;
 
             // Keep the body pinned to the ground
             if (player.rb.linearVelocity.y > 0f)
@@ -57,7 +57,7 @@ public class PlayerMovingState : PlayerBaseState
         }
         else
         {
-            movement = inputWorld.normalized * player.groundedSpeed * 10f;
+            movement = inputWorld.normalized * player.groundedSpeed * 20f;
         }
 
         player.rb.AddForce(movement, ForceMode.Force);

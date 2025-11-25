@@ -22,6 +22,8 @@ public class PlayerStateManager : MonoBehaviour
     [Header("Aerial Movement")]
     public float aerialSpeed = 7f;
     public float aerialDrag = 6.0f;
+
+    [Header("Aerial Movement")]
     Gravity gravity;
     [HideInInspector] public bool useGravity;
     public float gravityForceRising = 5f;

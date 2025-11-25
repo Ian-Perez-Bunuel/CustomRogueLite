@@ -145,6 +145,7 @@ MonoBehaviour:
   useGravity: 0
   gravityForceRising: 25
   gravityForceFalling: 65
+  gravityAccelerationDefault: 12
   jump: {fileID: 3262630941976175956, guid: 0804d972e0ae4b44eb0a8af77e928fee, type: 3}
   canJump: 0
   jumpPower: 20
