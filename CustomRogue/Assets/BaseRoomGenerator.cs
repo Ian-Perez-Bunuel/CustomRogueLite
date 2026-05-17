@@ -31,9 +31,9 @@ public class BaseRoomGenerator : MonoBehaviour
         Vector3 centre = world.CentreFromCoord(coord);
 
         // Put in build chunk
-        float pointSpacing = world.boundsSize / (world.numPointsPerAxis - 1);
+        float pointSpacing = world.worldSettings.boundsSize / (world.worldSettings.numPointsPerAxis - 1);
 
-        densityGenerator.Generate(chunk.pointsBuffer, world.numPointsPerAxis, world.boundsSize, roomDimensions, roomOrigin, centre, world.offset, pointSpacing);
+        densityGenerator.Generate(chunk.pointsBuffer, world.worldSettings.numPointsPerAxis, world.worldSettings.boundsSize, roomDimensions, roomOrigin, centre, world.worldSettings.offset, pointSpacing);
 
         chunk.valuesChanged = true;
     }

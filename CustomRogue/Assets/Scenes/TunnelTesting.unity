@@ -1142,11 +1142,8 @@ MonoBehaviour:
   densityGenerator: {fileID: 1219391082}
   worldDimensions: {x: 10, y: 10, z: 10}
   chunkHolder: {fileID: 2035433975}
-  material: {fileID: 2100000, guid: 0b3e9a8e764c9f64f8fee3ceda83e08f, type: 2}
-  surfaceLevel: 0.6
-  boundsSize: 35
-  offset: {x: 0, y: 0, z: 0}
-  numPointsPerAxis: 30
+  material: {fileID: 2100000, guid: 28d182add7633af4da48475503ef4627, type: 2}
+  worldSettings: {fileID: 11400000, guid: 2c14bb3260bf8584a81baddf27dd4fe5, type: 2}
 --- !u!4 &512976028
 Transform:
   m_ObjectHideFlags: 0
@@ -1477,7 +1474,7 @@ MonoBehaviour:
   numOctaves: 5
   lacunarity: 2
   persistence: 0.52
-  noiseScale: 2
+  noiseScale: 1.5
   noiseWeight: 1.6
   weightMultiplier: 3.16
   verticalBiasStrength: 4

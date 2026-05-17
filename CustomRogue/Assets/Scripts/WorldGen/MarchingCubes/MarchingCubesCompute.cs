@@ -43,12 +43,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
     [Header("Voxel Settings")]
     public Material material;
-    public float surfaceLevel; // If value > surfaceLevel then it's solid
-    public float boundsSize = 1;
-    public Vector3 offset = Vector3.zero;
-
-    [Range(2, 100)]
-    public int numPointsPerAxis = 30;
+    public WorldSettings worldSettings;
 
     // Buffers
     int kernel;
@@ -57,20 +52,20 @@ public class MarchingCubesCompute : MonoBehaviour
 
     public float GetSurfaceLevel()
     {
-        return surfaceLevel;
+        return worldSettings.surfaceLevel;
     }
 
     public Vector3 GetDimensions()
     {
         Vector3 dimensions = worldDimensions;
-        dimensions *= boundsSize;
+        dimensions *= worldSettings.boundsSize;
 
         return dimensions;
     }
 
     public Vector3 GetWorldCenter()
     {
-        return (worldDimensions - Vector3.one) * boundsSize * 0.5f;
+        return (worldDimensions - Vector3.one) * worldSettings.boundsSize * 0.5f;
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -86,19 +81,19 @@ public class MarchingCubesCompute : MonoBehaviour
 
     public Vector3 CentreFromCoord(Vector3Int coord)
     {
-        return new Vector3(coord.x, coord.y, coord.z) * boundsSize;
+        return new Vector3(coord.x, coord.y, coord.z) * worldSettings.boundsSize;
     }
 
     void DispatchComputeShader(Chunk chunk)
     {
-        int numVoxelsPerAxis = numPointsPerAxis - 1;
+        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
         int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
 
         triangleBuffer.SetCounterValue(0);
         computeShader.SetBuffer(kernel, "points", chunk.pointsBuffer);
         computeShader.SetBuffer(kernel, "triangles", triangleBuffer);
-        computeShader.SetInt("numPointsPerAxis", numPointsPerAxis);
-        computeShader.SetFloat("surfaceLevel", surfaceLevel);
+        computeShader.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
+        computeShader.SetFloat("surfaceLevel", worldSettings.surfaceLevel);
 
         computeShader.Dispatch(kernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
     }
@@ -145,8 +140,8 @@ public class MarchingCubesCompute : MonoBehaviour
         Vector3 centre = CentreFromCoord(coord);
 
         // Put in build chunk
-        float pointSpacing = boundsSize / (numPointsPerAxis - 1);
-        densityGenerator.Generate(chunk.pointsBuffer, numPointsPerAxis, boundsSize, worldDimensions, Vector3.zero, centre, offset, pointSpacing);
+        float pointSpacing = worldSettings.boundsSize / (worldSettings.numPointsPerAxis - 1);
+        densityGenerator.Generate(chunk.pointsBuffer, worldSettings.numPointsPerAxis, worldSettings.boundsSize, worldDimensions, Vector3.zero, centre, worldSettings.offset, pointSpacing);
 
         DispatchComputeShader(chunk);
 
@@ -181,8 +176,8 @@ public class MarchingCubesCompute : MonoBehaviour
 
     void CreateBuffers()
     {
-        int numPoints = numPointsPerAxis * numPointsPerAxis * numPointsPerAxis;
-        int numVoxelsPerAxis = numPointsPerAxis - 1;
+        int numPoints = worldSettings.numPointsPerAxis * worldSettings.numPointsPerAxis * worldSettings.numPointsPerAxis;
+        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
         int numVoxels = numVoxelsPerAxis * numVoxelsPerAxis * numVoxelsPerAxis;
         int maxTriangleCount = numVoxels * 5;
 
@@ -207,7 +202,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
     Vector3Int WorldToChunkCoord(Vector3 pos)
     {
-        float s = boundsSize;
+        float s = worldSettings.boundsSize;
 
         int x = Mathf.FloorToInt((pos.x + s * 0.5f) / s);
         int y = Mathf.FloorToInt((pos.y + s * 0.5f) / s);
@@ -253,7 +248,7 @@ public class MarchingCubesCompute : MonoBehaviour
                     for (int z = 0; z < worldDimensions.z; z++)
                     {
                         Chunk chunk = CreateChunk(new Vector3Int(x, y, z));
-                        chunk.Setup(material, numPointsPerAxis);
+                        chunk.Setup(material, worldSettings.numPointsPerAxis);
                         chunks.Add(chunk);
                     }
                 }
@@ -277,7 +272,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
     public Vector3 GetChunkDimensions()
     {
-        return Vector3.one * boundsSize;
+        return Vector3.one * worldSettings.boundsSize;
     }
 
     public Chunk GetChunkFromCoord(Vector3Int coord)
@@ -315,7 +310,7 @@ public class MarchingCubesCompute : MonoBehaviour
         maxCoord.y = Mathf.Clamp(maxCoord.y, 0, (int)worldDimensions.y - 1);
         maxCoord.z = Mathf.Clamp(maxCoord.z, 0, (int)worldDimensions.z - 1);
 
-        int numVoxelsPerAxis = numPointsPerAxis - 1;
+        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
         int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
 
         // Loop through all potentially affected chunks
@@ -332,7 +327,7 @@ public class MarchingCubesCompute : MonoBehaviour
                     // This uses world-space positions stored in the buffer,
                     // so we can pass the same worldPos & radius to every chunk.
                     computeEditting.SetBuffer(kernel, "points", chunk.pointsBuffer);
-                    computeEditting.SetInt("numPointsPerAxis", numPointsPerAxis);
+                    computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
                     // Other variables are passed in the terraformer
 
                     computeEditting.Dispatch(0, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
@@ -349,11 +344,11 @@ public class MarchingCubesCompute : MonoBehaviour
 
         int editKernel = computeEditting.FindKernel("CSMain");
 
-        int numVoxelsPerAxis = numPointsPerAxis - 1;
+        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
         int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
 
         computeEditting.SetBuffer(editKernel, "points", chunk.pointsBuffer);
-        computeEditting.SetInt("numPointsPerAxis", numPointsPerAxis);
+        computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
 
         computeEditting.Dispatch(editKernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
 
@@ -381,7 +376,7 @@ public class MarchingCubesCompute : MonoBehaviour
         maxCoord.y = Mathf.Clamp(maxCoord.y, 0, (int)worldDimensions.y - 1);
         maxCoord.z = Mathf.Clamp(maxCoord.z, 0, (int)worldDimensions.z - 1);
 
-        int numVoxelsPerAxis = numPointsPerAxis - 1;
+        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
         int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
 
         // Loop through all potentially affected chunks
@@ -396,7 +391,7 @@ public class MarchingCubesCompute : MonoBehaviour
                         continue;
 
                     computeEditting.SetBuffer(kernel, "points", chunk.pointsBuffer);
-                    computeEditting.SetInt("numPointsPerAxis", numPointsPerAxis);
+                    computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
 
                     computeEditting.SetVector("cylinderStart", cylinderStart);
                     computeEditting.SetVector("cylinderEnd", cylinderEnd);
