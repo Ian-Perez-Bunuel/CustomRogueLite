@@ -1,0 +1,47 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+static const int numThreads = 8;
+
+RWStructuredBuffer<float4> points;
+int numPointsPerAxis;
+
+// Open Walls
+bool leftOpen = false;
+bool rightOpen = false;
+bool frontOpen = false;
+bool backOpen = false;
+bool topOpen = false;
+bool bottomOpen = false;
+
+[numthreads(numThreads, numThreads, numThreads)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    // Stop if out of range
+    if (id.x >= numPointsPerAxis || id.y >= numPointsPerAxis || id.z >= numPointsPerAxis)
+    {
+        return;
+    }
+    
+    uint index = id.x + id.y * numPointsPerAxis + id.z * numPointsPerAxis * numPointsPerAxis;
+    float4 p = points[index];
+    
+    bool isClosed =
+    (id.x == 0 && !leftOpen) ||
+    (id.x == numPointsPerAxis - 1 && !rightOpen) ||
+    (id.y == 0 && !bottomOpen) ||
+    (id.y == numPointsPerAxis - 1 && !topOpen) ||
+    (id.z == 0 && !backOpen) ||
+    (id.z == numPointsPerAxis - 1 && !frontOpen);
+    
+    if (isClosed)
+    {
+        p.w = 1.0f;
+    }
+    else
+    {
+        p.w = 0.0f;
+    }
+    
+    points[index] = p;
+}

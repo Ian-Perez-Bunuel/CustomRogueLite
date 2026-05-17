@@ -1,0 +1,80 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+static const int numThreads = 8;
+
+RWStructuredBuffer<float4> points;
+int numPointsPerAxis;
+
+// Rotated cylinder with different end radius
+float3 cylinderStart;   // Center of cylinder start
+float3 cylinderEnd;     // Center of cylinder end
+float startRadius;      // Radius at start
+float endRadius;        // Radius at end
+
+float surfaceLevel;
+
+
+[numthreads(numThreads, numThreads, numThreads)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    // Stop if out of range
+    if (id.x >= numPointsPerAxis ||
+        id.y >= numPointsPerAxis ||
+        id.z >= numPointsPerAxis)
+    {
+        return;
+    }
+    
+    uint index = id.x
+        + id.y * numPointsPerAxis
+        + id.z * numPointsPerAxis * numPointsPerAxis;
+
+    float4 p = points[index];
+    float3 pos = p.xyz;
+
+    // Axis from one end of the cylinder to the other
+    float3 axis = cylinderEnd - cylinderStart;
+    float axisLenSq = dot(axis, axis);
+
+    // Prevent divide by zero if both ends are in the same position
+    if (axisLenSq <= 0.000001)
+    {
+        return;
+    }
+
+    // Project point onto the cylinder axis
+    float t = dot(pos - cylinderStart, axis) / axisLenSq;
+
+    // Outside the end caps
+    if (t < 0.0 || t > 1.0)
+    {
+        return;
+    }
+
+    // Closest point on the cylinder axis
+    float3 closestPointOnAxis = cylinderStart + t * axis;
+
+    // Interpolate radius along the cylinder
+    float radius = lerp(startRadius, endRadius, t);
+
+    // Distance from point to cylinder axis
+    float3 radialDiff = pos - closestPointOnAxis;
+    float distSq = dot(radialDiff, radialDiff);
+
+    float dist = sqrt(distSq);
+
+    // Negative inside, positive outside
+    float sdf = dist - radius;
+
+    // Smooth edge thickness in world units / voxel units
+    float smoothWidth = 0.5;
+
+    // 1 inside, 0 outside, smooth transition near edge
+    float cutAmount = 1.0 - smoothstep(-smoothWidth, smoothWidth, sdf);
+
+    // Remove smoothly
+    p.w = lerp(p.w, 0.0, cutAmount);
+
+    points[index] = p;
+}

@@ -3,10 +3,10 @@ static const int numThreads = 8;
 RWStructuredBuffer<float4> points;
 int numPointsPerAxis;
 float boundsSize;
-float3 centre;
+float3 chunkCentre;
+float3 roomDimensions;
 float3 offset;
 float spacing;
-float3 worldSize;
 
 int indexFromCoord(uint x, uint y, uint z)
 {

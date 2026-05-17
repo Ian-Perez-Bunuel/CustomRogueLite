@@ -1,0 +1,23 @@
+#pragma kernel Density
+#include "Includes/Density.hlsl"
+
+[numthreads(numThreads, numThreads, numThreads)]
+void Density(int3 id : SV_DispatchThreadID)
+{
+    // Bounds check
+    if (id.x >= numPointsPerAxis ||
+        id.y >= numPointsPerAxis ||
+        id.z >= numPointsPerAxis)
+    {
+        return;
+    }
+
+    // World-space position of this point
+    float3 pos = chunkCentre + id * spacing - boundsSize / 2;
+
+    int index = indexFromCoord(id.x, id.y, id.z);
+
+    // xyz = position
+    // w   = density (1 = solid)
+    points[index] = float4(pos, 1.0f);
+}

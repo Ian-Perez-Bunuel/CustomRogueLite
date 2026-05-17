@@ -189,3 +189,13 @@ float4 snoise_grad(float3 v)
     float4 px = float4(dot(x0, g0), dot(x1, g1), dot(x2, g2), dot(x3, g3));
     return 42.0 * float4(grad, dot(m4, px));
 }
+
+float Normalize01(float value, float minValue, float maxValue)
+{
+    return saturate((value - minValue) / (maxValue - minValue));
+}
+
+float rand(float3 seed)
+{
+    return frac(sin(dot(seed, float3(12.9898, 78.233, 37.719))) * 43758.5453);
+}

@@ -14,15 +14,13 @@ public class NoiseDensity : DensityGenerator
     public float noiseScale = 1;        // overall scale(zoom) of your noise. (Also the frequency after / by 100)
     public float noiseWeight = 1;       // how strongly noise affects your final density.
     public float weightMultiplier = 1;  // used in the fancy weight logic inside the loop.
-    public float floorOffset = 1;       // pushes the “floor” of your terrain up/down.
     public float verticalBiasStrength;  // strength of the vertical split of density
-
-    public float middleFill;
 
     public Vector4 shaderParams;
 
-    public override ComputeBuffer Generate(ComputeBuffer pointsBuffer, int numPointsPerAxis, float boundsSize, Vector3 worldBounds, Vector3 centre, Vector3 offset, float spacing)
+    public override ComputeBuffer Generate(ComputeBuffer pointsBuffer, int numPointsPerAxis, float boundsSize, Vector3 roomBounds, Vector3 roomOrigin, Vector3 chunkCentre, Vector3 offset, float spacing)
     {
+        int kernel = densityShader.FindKernel("Density");
         buffersToRelease = new List<ComputeBuffer>();
 
         // Noise parameters
@@ -34,32 +32,22 @@ public class NoiseDensity : DensityGenerator
             offsets[i] = new Vector3((float)prng.NextDouble() * 2 - 1, (float)prng.NextDouble() * 2 - 1, (float)prng.NextDouble() * 2 - 1) * offsetRange;
         }
 
-        // Get the world's min and max
-        Vector3 worldMin = Vector3.zero;
-        Vector3 worldMax = worldBounds * boundsSize;
-
         var offsetsBuffer = new ComputeBuffer(offsets.Length, sizeof(float) * 3); // an array of float3 values, one for each noise octave(more on octaves in a moment).
         offsetsBuffer.SetData(offsets);
         buffersToRelease.Add(offsetsBuffer);
 
-        densityShader.SetVector("centre", new Vector4(centre.x, centre.y, centre.z));
+        densityShader.SetVector("chunkCentre", new Vector4(chunkCentre.x, chunkCentre.y, chunkCentre.z));
+
+        // Noise
         densityShader.SetInt("octaves", Mathf.Max(1, numOctaves));
         densityShader.SetFloat("lacunarity", lacunarity);
         densityShader.SetFloat("persistence", persistence);
         densityShader.SetFloat("noiseScale", noiseScale);
         densityShader.SetFloat("noiseWeight", noiseWeight);
-        densityShader.SetFloat("floorOffset", floorOffset);
         densityShader.SetFloat("weightMultiplier", weightMultiplier);
-        // Vertical changes
-        densityShader.SetFloat("verticalBiasStrength", verticalBiasStrength);
-        densityShader.SetVector("worldMin", worldMin);
-        densityShader.SetFloat("middleFill", middleFill);
-        densityShader.SetVector("worldMax", worldMax);
 
-        densityShader.SetBuffer(0, "offsets", offsetsBuffer);
+        densityShader.SetBuffer(kernel, "offsets", offsetsBuffer);
 
-        densityShader.SetVector("params", shaderParams);
-
-        return base.Generate(pointsBuffer, numPointsPerAxis, boundsSize, worldBounds, centre, offset, spacing);
+        return base.Generate(pointsBuffer, numPointsPerAxis, boundsSize, roomBounds, roomOrigin, chunkCentre, offset, spacing);
     }
 }
