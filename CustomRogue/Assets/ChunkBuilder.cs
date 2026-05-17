@@ -1,19 +1,22 @@
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 public class ChunkBuilder : MonoBehaviour
 {
-    [Range(2, 100)]
-    public int numPointsPerAxis = 30;
+    [SerializeField] MarchingCubesCompute chunkCanvas;
+    [SerializeField] WorldSettings worldSettings;
+
+    Chunk chunk;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        
+        // The only one
+        chunk = chunkCanvas.GetChunkFromCoord(new Vector3Int(0, 0, 0));
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
-        
+        // Brush should ignore the closest Collisions
     }
 }
