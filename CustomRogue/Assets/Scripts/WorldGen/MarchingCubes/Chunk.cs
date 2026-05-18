@@ -37,6 +37,7 @@ public class Chunk : MonoBehaviour
         pointsBuffer = new ComputeBuffer(numPoints, sizeof(float) * 4);
     }
 
+    public int GetNumberOfPoints() { return numPoints; }
 
     public void SetCoords(Vector3Int c) 
     { 

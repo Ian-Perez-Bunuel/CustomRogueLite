@@ -6,15 +6,14 @@ public class WorldBorder : MonoBehaviour
     Vector3 worldDimensions;
     Vector3 worldCenter;
 
-    [SerializeField] GameObject centerObj;
     [SerializeField] GameObject[] worldEdges;
     [SerializeField] GameObject[] worldWalls;
 
     [Header("Wall Parameters")]
-    float wallThickness = 1f;
+    [SerializeField] float wallThickness = 1f;
 
     [Header("Edge Parameters")]
-    float edgeThickness = 10f;
+    [SerializeField] float edgeThickness = 10f;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -26,8 +25,6 @@ public class WorldBorder : MonoBehaviour
 
         TunnelGenerator.SetCenterPos(worldCenter);
 
-        // Center Obj
-        centerObj.transform.position = worldCenter;
         SetupEdges();
         SetupWalls();
     }
