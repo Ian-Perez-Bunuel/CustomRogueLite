@@ -67,4 +67,13 @@ public class ChunkBuilder : MonoBehaviour
         // Set chunk as changed
         chunk.valuesChanged = true;
     }
+
+
+    public void ClearObjects()
+    {
+        foreach (Transform child in objectHolder.transform)
+        {
+            Destroy(child.gameObject);
+        }
+    }
 }
