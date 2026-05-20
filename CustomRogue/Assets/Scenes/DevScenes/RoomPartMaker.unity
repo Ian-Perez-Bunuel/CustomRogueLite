@@ -2679,8 +2679,9 @@ MonoBehaviour:
   chunkCanvas: {fileID: 466128405}
   worldSettings: {fileID: 11400000, guid: 2c14bb3260bf8584a81baddf27dd4fe5, type: 2}
   objectHolder: {fileID: 2019242705}
-  objectSmoothing: 0.2
-  distortionAmount: 0.5
+  objectSmoothing: 1.5
+  distortionAmount: 0.7
+  distortionScale: 0.4
 --- !u!1 &1440349652
 GameObject:
   m_ObjectHideFlags: 0

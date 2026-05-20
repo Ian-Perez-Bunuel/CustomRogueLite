@@ -13,6 +13,7 @@ public class ChunkBuilder : MonoBehaviour
     [SerializeField] GameObject objectHolder;
     public float objectSmoothing = 2.0f;
     public float distortionAmount = 0.15f;
+    public float distortionScale = 0.25f;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -99,18 +100,23 @@ public class ChunkBuilder : MonoBehaviour
 
         for (int i = 0; i < points.Length; i++)
         {
-            // Only affect points near the surface
-            if (points[i].w > -0.2f && points[i].w < 0.8f)
+            Vector3 pos = new Vector3(points[i].x, points[i].y, points[i].z);
+
+            // Only distort near the surface
+            if (points[i].w > -0.2f && points[i].w < 0.8f && !IsEdgePoint(i))
             {
-                float distortion = Random.Range(-distortionAmount, distortionAmount);
-                points[i].w += distortion;
+                float noise =
+                Mathf.PerlinNoise(pos.x * distortionScale, pos.y * distortionScale) +
+                Mathf.PerlinNoise(pos.y * distortionScale, pos.z * distortionScale) +
+                Mathf.PerlinNoise(pos.x * distortionScale, pos.z * distortionScale);
+
+                noise = noise / 3f * 2f - 1f;
+                points[i].w += noise * distortionAmount;
             }
         }
 
         chunk.pointsBuffer.SetData(points);
         chunk.valuesChanged = true;
-
-        Debug.Log("Distorted Chunk");
     }
 
     void SetToNearestPoint(Transform objTransform, Vector4[] points)
