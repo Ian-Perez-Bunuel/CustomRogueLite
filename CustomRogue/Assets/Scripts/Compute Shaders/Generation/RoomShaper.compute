@@ -1,0 +1,93 @@
+#pragma kernel Density
+#include "Includes/Density.hlsl"
+#include "Includes/Noise.hlsl"
+
+// Noise settings
+StructuredBuffer<float3> offsets;
+int octaves;
+float lacunarity;
+float persistence;
+float noiseScale;
+float noiseWeight;
+float weightMultiplier;
+float3 roomOrigin;
+
+float GetPointsDensity(float noise, float3 pos, float3 roomMin, float3 roomMax)
+{
+    float thickness = 1.0f;
+    float displacement = noise * 2.0f;
+
+    float distToFloor = abs(pos.y - roomMin.y);
+    float distToRoof = abs(pos.y - roomMax.y);
+
+    float distToWallX1 = abs(pos.x - roomMin.x);
+    float distToWallX2 = abs(pos.x - roomMax.x);
+    float distToWallZ1 = abs(pos.z - roomMin.z);
+    float distToWallZ2 = abs(pos.z - roomMax.z);
+
+    float shortestDist = min(
+        min(distToFloor, distToRoof),
+        min(
+            min(distToWallX1, distToWallX2),
+            min(distToWallZ1, distToWallZ2)
+        )
+    );
+
+    float density = thickness + displacement - shortestDist;
+
+    return density;
+}
+
+[numthreads(numThreads, numThreads, numThreads)]
+void Density(int3 id : SV_DispatchThreadID)
+{
+    // Bounds checking
+    if (id.x >= numPointsPerAxis || id.y >= numPointsPerAxis || id.z >= numPointsPerAxis)
+    {
+        return;
+    }
+    int index = indexFromCoord(id.x, id.y, id.z);
+    // Don't override anything already set
+    if (points[index].w >= 0.999)
+        return;
+    
+    // Positions
+    float3 pos = points[index].xyz;
+    
+    // Min and Max of the room
+    float3 roomMin = roomOrigin - boundsSize * 0.5f;
+    float3 roomMax = roomOrigin + roomDimensions - boundsSize * 0.5f;
+    
+    float noise = 0; // Will store the final combined noise value from all octaves.
+    float maxPossibleNoise = 0;
+    
+    float frequency = noiseScale / 100; // Starting frequency of the noise (how zoomed in / out).
+    float amplitude = 1;
+    float weight = 1; // Used for a sharper noise effect inside the loop
+    
+    for (int j = 0; j < octaves; j++)
+    {
+        float3 noiseSamplePos = (pos) * frequency + offsets[j] + offset;
+        float n = snoise(noiseSamplePos.xyz);
+
+        float v = 1 - abs(n);
+        v = v * v;
+
+        v *= weight;
+        weight = max(min(v * weightMultiplier, 1), 0);
+
+        noise += v * amplitude;
+
+        // Track theoretical maximum
+        maxPossibleNoise += amplitude;
+
+        amplitude *= persistence;
+        frequency *= lacunarity;
+    }
+    
+    float density = GetPointsDensity(noise, pos, roomMin, roomMax);
+    
+    float finalValue = saturate(points[index].w + density);
+    
+    points[index] = float4(pos, finalValue);
+}

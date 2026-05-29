@@ -85,13 +85,6 @@ public class ChunkBuilder : MonoBehaviour
         chunk.valuesChanged = true;
     }
 
-    void DistortPoint(Vector4 point)
-    {
-        float distortion = Random.Range(-0.45f, 0.5f);
-
-        point.w += distortion;
-    }
-
     public void DistortChunk()
     {
         int numPoints = chunk.GetNumberOfPoints();
@@ -103,7 +96,7 @@ public class ChunkBuilder : MonoBehaviour
             Vector3 pos = new Vector3(points[i].x, points[i].y, points[i].z);
 
             // Only distort near the surface
-            if (points[i].w > -0.2f && points[i].w < 0.8f && !IsEdgePoint(i))
+            if (points[i].w > 0.1f && points[i].w < 0.8f && !IsEdgePoint(i))
             {
                 float noise =
                 Mathf.PerlinNoise(pos.x * distortionScale, pos.y * distortionScale) +

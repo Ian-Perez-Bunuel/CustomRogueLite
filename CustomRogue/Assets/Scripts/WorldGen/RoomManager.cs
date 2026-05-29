@@ -34,12 +34,19 @@ public class RoomManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.R))
         {
-            Debug.Log("ROOM MADE");
-            Vector3Int randDimension = new Vector3Int(
-                Random.Range(1, 4),
-                Random.Range(1, 4),
-                Random.Range(1, 4));
-            CreateRoom(randDimension);
+            int roomsMade = 0;
+            while (roomsMade < amountOfRooms)
+            {
+                Debug.Log("ROOM MADE");
+                Vector3Int randDimension = new Vector3Int(
+                    Random.Range(1, 4),
+                    Random.Range(1, 4),
+                    Random.Range(1, 4));
+
+                CreateRoom(randDimension);
+
+                roomsMade++;
+            }
         }
     }
 
@@ -110,7 +117,7 @@ public class RoomManager : MonoBehaviour
             }
         }
 
-        Vector3 roomOrigin = startingChunkPos;
+        Vector3 roomOrigin = startingChunk.GetOrigin(world.worldSettings.boundsSize);
 
         // Generate base room noise
         roomNoiseGenerator.AddNoiseToRoom(room, roomDimensions, roomOrigin);

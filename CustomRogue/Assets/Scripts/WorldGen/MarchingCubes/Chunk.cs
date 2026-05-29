@@ -52,7 +52,15 @@ public class Chunk : MonoBehaviour
         meshCollider.sharedMesh = meshFilter.sharedMesh;
     }
 
-    public Mesh GetMesh() { return meshFilter.sharedMesh; }
+    public Mesh GetMesh() 
+    { 
+        return meshFilter.sharedMesh; 
+    }
+
+    public Vector3 GetOrigin(float boundsSize)
+    {
+        return new Vector3(coords.x, coords.y, coords.z) * boundsSize;
+    }
 
     public void SetCollider() 
     {

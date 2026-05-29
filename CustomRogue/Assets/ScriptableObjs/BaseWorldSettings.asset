@@ -15,4 +15,4 @@ MonoBehaviour:
   surfaceLevel: 0.6
   boundsSize: 35
   offset: {x: 0, y: 0, z: 0}
-  numPointsPerAxis: 50
+  numPointsPerAxis: 70

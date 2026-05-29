@@ -233,6 +233,7 @@ public class MarchingCubesCompute : MonoBehaviour
         Chunk newChunk = chunk.AddComponent<Chunk>();
         newChunk.gameObject.layer = newChunk.transform.parent.gameObject.layer;
         newChunk.SetCoords(coord);
+
         return newChunk;
     }
 

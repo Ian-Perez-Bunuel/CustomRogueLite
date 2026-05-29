@@ -1383,7 +1383,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c1a320574fe9fe498015cd37c407a10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  densityShader: {fileID: 7200000, guid: 8b3bab86e4a28734c87e0aadb41a83f0, type: 3}
+  densityShader: {fileID: 7200000, guid: 2e3d972cb052b974082626208d5f0120, type: 3}
   seed: 0
   numOctaves: 5
   lacunarity: 2
@@ -2529,6 +2529,8 @@ MonoBehaviour:
   - {fileID: 93973405}
   - {fileID: 1196437640}
   - {fileID: 1127285409}
+  wallThickness: 1
+  edgeThickness: 10
 --- !u!4 &1638705234
 Transform:
   m_ObjectHideFlags: 0
@@ -3152,7 +3154,7 @@ MonoBehaviour:
   clearRoomCompute: {fileID: 7200000, guid: 0e99d6ed8d9e5074085fa156be3b7a2c, type: 3}
   world: {fileID: 512976027}
   roomNoiseGenerator: {fileID: 788498057}
-  amountOfRooms: 1
+  amountOfRooms: 10
 --- !u!4 &1857886584
 Transform:
   m_ObjectHideFlags: 0
