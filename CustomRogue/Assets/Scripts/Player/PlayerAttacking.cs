@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 
 public class PlayerAttacking : MonoBehaviour
 {
-    private PlayerStateManager stateManager;
+    // private PlayerStateManager stateManager;
     private Rigidbody rb;
 
     public Transform facing;
@@ -29,9 +29,9 @@ public class PlayerAttacking : MonoBehaviour
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    void Awake()
     {
-        stateManager = GetComponent<PlayerStateManager>();
+        //stateManager = GetComponent<PlayerStateManager>();
         rb = GetComponent<Rigidbody>();
     }
 
@@ -45,14 +45,14 @@ public class PlayerAttacking : MonoBehaviour
 
         if (slam.action.WasPressedThisFrame())
         {
-            if (stateManager.grounded)
-            {
-                Slam();
-            }
-            else
-            {
-                GroundPound();
-            }
+            //if (stateManager.grounded)
+            //{
+            //    Slam();
+            //}
+            //else
+            //{
+            //    GroundPound();
+            //}
         }
     }
 
@@ -63,12 +63,12 @@ public class PlayerAttacking : MonoBehaviour
             // Add Impulse downwards
             rb.AddForce(Vector3.down * groundPoundPower, ForceMode.Impulse);
 
-            if (stateManager.grounded)
-            {
-                slamTerraformer.gameObject.SetActive(true);
+            //if (stateManager.grounded)
+            //{
+            //    slamTerraformer.gameObject.SetActive(true);
 
-                groundPoundActive = false;
-            }
+            //    groundPoundActive = false;
+            //}
         }
     }
 
@@ -102,14 +102,15 @@ public class PlayerAttacking : MonoBehaviour
         // Spawn crater
         slamTerraformer.gameObject.SetActive(true);
 
-        if (stateManager.OnSlope())
-        {
-            impulseDir = stateManager.raycastHit.normal * slamPower;
-        }
-        else
-        {
-            impulseDir = new Vector3(0.0f, slamPower, 0.0f);
-        }
+        //if (stateManager.OnSlope())
+        //{
+        //    impulseDir = stateManager.raycastHit.normal * slamPower;
+        //}
+        //else
+        //{
+        //    impulseDir = new Vector3(0.0f, slamPower, 0.0f);
+        //}
+        impulseDir = new Vector3(0.0f, slamPower, 0.0f);
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
         rb.AddForce(impulseDir, ForceMode.Impulse);
     }
