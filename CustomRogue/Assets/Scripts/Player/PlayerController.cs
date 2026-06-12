@@ -1,94 +1,77 @@
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
-using static UnityEngine.EventSystems.StandaloneInputModule;
 
 public class PlayerController : MonoBehaviour
 {
-    CharacterController controller;
-    [SerializeField] Transform orientation;
-    PlayerInput input;
+    // Components
+    [HideInInspector] public CharacterController controller;
+    [HideInInspector] public Transform orientation;
+    [HideInInspector] public PlayerInput input;
+
+    // States
+    PlayerState currentState;
+    PlayerDefault groundedState;
 
     [Header("Movement Stats")]
     public float speed;
-    [SerializeField] const float MAX_SPEED = 5;
-    Vector3 velocity;
+    [HideInInspector] public Vector3 velocity;
 
     [Header("Jump")]
-    [SerializeField] float jumpHeight = 5;
-    bool canJump = false;
+    public float jumpHeight = 5;
+    [HideInInspector] public bool canJump = false;
 
     [Header("Ground Check")]
     [SerializeField] Transform groundCheck;
     [SerializeField] float groundDistance;
     [SerializeField] LayerMask groundMask;
-    bool isGrounded;
+    [HideInInspector] public bool isGrounded = false;
 
     [Header("Gravity")]
-    [SerializeField] bool useGravity = true;
-    [SerializeField] float gravity;
+    [HideInInspector] public PlayerGravity gravity;
+
+    [Header("Player Cameras")]
+    [SerializeField] PlayerCamera playerCamera;
+
+    [Header("Perspective Change")]
+    public InputActionReference burrow;
+    [HideInInspector] public bool isFirstPerson = true;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        // States
+        groundedState = new PlayerDefault();
+        ChangeState(groundedState);
+
         controller = GetComponent<CharacterController>();
         input = GetComponent<PlayerInput>();
+
+        gravity = GetComponent<PlayerGravity>();
     }
 
     // Update is called once per frame
     void Update()
     {
-        // Ground check
-        isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
-
-        // Jump
-        if (isGrounded)
-            canJump = true;
-
-        if (input.actions["Jump"].IsPressed() && canJump)
+        if (burrow.action.WasPressedThisFrame())
         {
-            Jump();
+            playerCamera.SwapPerspective();
         }
 
-        // Gravity
-        if (Input.GetKeyDown(KeyCode.F))
-        {
-            useGravity = !useGravity;
-        }
-        if (useGravity)
-        {
-            Gravity();
-        }
-
-        // Movement
-        Movement();
+        currentState.Update(this);
     }
 
-    void Movement()
+    void ChangeState(PlayerState newState)
     {
-        Vector2 moveInput = input.actions["Move"].ReadValue<Vector2>();
-
-        Vector3 moveDirection = orientation.right * moveInput.x + orientation.forward * moveInput.y;
-        Vector3 movement = moveDirection * Time.deltaTime * speed;
-
-        controller.Move(movement);
-    }
-
-    void Gravity()
-    {
-        if (isGrounded && velocity.y < 0)
-        {
-            velocity.y = -1f;
+        if (newState == currentState)
             return;
-        }
 
-        velocity.y += gravity * Time.deltaTime;
-        controller.Move(velocity * Time.deltaTime);
-    }
 
-    void Jump()
-    {
-        velocity.y = Mathf.Sqrt(jumpHeight * -2 * gravity);
-        canJump = false;
+        if (currentState != null)
+            currentState.OnExit(this);
+
+        currentState = newState;
+        currentState.OnEnter(this);
     }
 }

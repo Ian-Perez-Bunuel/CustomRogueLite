@@ -105,6 +105,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8020986630104831512}
   - component: {fileID: 917866904952780127}
+  - component: {fileID: 1977682655150174448}
   - component: {fileID: 7127349116640270871}
   - component: {fileID: 6028610529891216562}
   - component: {fileID: 8158692935374945578}
@@ -147,16 +148,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6ee2d387403a57748a54523e6a2549c9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  controller: {fileID: 0}
   orientation: {fileID: 8752823547925126031}
+  input: {fileID: 0}
   speed: 20
+  velocity: {x: 0, y: 0, z: 0}
   jumpHeight: 5
+  canJump: 0
   groundCheck: {fileID: 1750768958191646867}
   groundDistance: 0.4
   groundMask:
     serializedVersion: 2
     m_Bits: 8
-  useGravity: 1
-  gravity: -34.8
+  isGrounded: 0
+  gravity: {fileID: 0}
+  firstPerson: {fileID: 0}
+  thirdPerson: {fileID: 0}
+  burrow: {fileID: 5183248575466638448, guid: 0804d972e0ae4b44eb0a8af77e928fee, type: 3}
+  isFirstPerson: 1
+--- !u!114 &1977682655150174448
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7132281203921914019}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c032f649c69f07641bafa0d03facf8ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  useGravity: 0
+  gravity: -75
 --- !u!33 &7127349116640270871
 MeshFilter:
   m_ObjectHideFlags: 0
