@@ -24,7 +24,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("Ground Check")]
     [SerializeField] Transform groundCheck;
-    [SerializeField] float groundDistance;
+    [SerializeField] float groundRayRadius;
     [SerializeField] LayerMask groundMask;
     [HideInInspector] public bool isGrounded = false;
 
@@ -54,6 +54,9 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        isGrounded = Physics.CheckSphere(groundCheck.position, groundRayRadius, groundMask);
+
+        // BURROW NEEDS SWAPPED TO STATE
         if (burrow.action.WasPressedThisFrame())
         {
             playerCamera.SwapPerspective();

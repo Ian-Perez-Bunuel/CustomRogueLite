@@ -156,14 +156,13 @@ MonoBehaviour:
   jumpHeight: 5
   canJump: 0
   groundCheck: {fileID: 1750768958191646867}
-  groundDistance: 0.4
+  groundRayRadius: 0.4
   groundMask:
     serializedVersion: 2
     m_Bits: 8
   isGrounded: 0
   gravity: {fileID: 0}
-  firstPerson: {fileID: 0}
-  thirdPerson: {fileID: 0}
+  playerCamera: {fileID: 0}
   burrow: {fileID: 5183248575466638448, guid: 0804d972e0ae4b44eb0a8af77e928fee, type: 3}
   isFirstPerson: 1
 --- !u!114 &1977682655150174448
