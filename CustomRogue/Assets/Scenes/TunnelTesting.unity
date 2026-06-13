@@ -2953,8 +2953,8 @@ MonoBehaviour:
   firstPersonCamera: {fileID: 1011480572}
   thirdPersonCamera: {fileID: 1498517122}
   verticalDefault: 40
-  sensX: 25
-  sensY: 25
+  sensX: 15
+  sensY: 15
 --- !u!1 &1638705232
 GameObject:
   m_ObjectHideFlags: 0

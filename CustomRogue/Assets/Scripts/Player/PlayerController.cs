@@ -9,10 +9,12 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public CharacterController controller;
     [HideInInspector] public Transform orientation;
     [HideInInspector] public PlayerInput input;
+    [SerializeField] public PlayerVisuals visuals;
 
     // States
     PlayerState currentState;
-    PlayerDefault groundedState;
+    [HideInInspector] public PlayerDefault defaultState;
+    [HideInInspector] public PlayerBurrow burrowState;
 
     [Header("Movement Stats")]
     public float speed;
@@ -32,7 +34,7 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public PlayerGravity gravity;
 
     [Header("Player Cameras")]
-    [SerializeField] PlayerCamera playerCamera;
+    public PlayerCamera playerCamera;
 
     [Header("Perspective Change")]
     public InputActionReference burrow;
@@ -42,8 +44,9 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         // States
-        groundedState = new PlayerDefault();
-        ChangeState(groundedState);
+        defaultState = new PlayerDefault();
+        burrowState = new PlayerBurrow();
+        ChangeState(defaultState);
 
         controller = GetComponent<CharacterController>();
         input = GetComponent<PlayerInput>();
@@ -56,16 +59,10 @@ public class PlayerController : MonoBehaviour
     {
         isGrounded = Physics.CheckSphere(groundCheck.position, groundRayRadius, groundMask);
 
-        // BURROW NEEDS SWAPPED TO STATE
-        if (burrow.action.WasPressedThisFrame())
-        {
-            playerCamera.SwapPerspective();
-        }
-
         currentState.Update(this);
     }
 
-    void ChangeState(PlayerState newState)
+    public void ChangeState(PlayerState newState)
     {
         if (newState == currentState)
             return;

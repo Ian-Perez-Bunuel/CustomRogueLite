@@ -4,13 +4,22 @@ public class PlayerBurrow : PlayerState
 {
     public override void OnEnter(PlayerController player)
     {
+        player.visuals.SetToBurrow();
+        player.playerCamera.SetThirdPerson();
     }
     public override void OnExit(PlayerController player)
     {
+        player.visuals.SetToDefault();
+        player.playerCamera.SetFirstPerson();
     }
 
     public override void Update(PlayerController player)
     {
+        if (player.burrow.action.WasPressedThisFrame())
+        {
+            player.ChangeState(player.defaultState);
+        }
+
         // Gravity
         if (player.isGrounded && player.velocity.y < 0)
         {

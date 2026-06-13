@@ -16,6 +16,11 @@ public class PlayerDefault : PlayerState
         if (player.isGrounded)
             player.canJump = true;
 
+        if (player.burrow.action.WasPressedThisFrame())
+        {
+            player.ChangeState(player.burrowState);
+        }
+
         if (player.input.actions["Jump"].IsPressed() && player.canJump)
         {
             Jump(player);

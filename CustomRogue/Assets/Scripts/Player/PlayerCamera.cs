@@ -70,29 +70,43 @@ public class PlayerCamera : MonoBehaviour
 
         if (isFirstPerson)
         {
-            // Match first person rotation to the current third-person camera view
-            Vector3 forward = thirdPersonCamera.transform.forward;
-
-            yRotation = YawFromForward(forward);
-            xRotation = PitchFromForward(forward);
-            xRotation = Mathf.Clamp(xRotation, -90f, 90f);
-
-            orientation.rotation = Quaternion.Euler(0f, yRotation, 0f);
-            cameraTransform.rotation = Quaternion.Euler(xRotation, yRotation, 0f);
-
-            firstPersonCamera.Priority = 1;
-            thirdPersonCamera.Priority = 0;
+            SetFirstPerson();
         }
         else
         {
-            // Match third person orbit to current first-person yaw
-            thirdPersonOrbitalFollow.HorizontalAxis.Value = yRotation;
-            // Auto look from above
-            thirdPersonOrbitalFollow.VerticalAxis.Value = verticalDefault;
-
-            firstPersonCamera.Priority = 0;
-            thirdPersonCamera.Priority = 1;
+            SetThirdPerson();
         }
+    }
+
+    public void SetFirstPerson()
+    {
+        isFirstPerson = true;
+
+        // Match first person rotation to the current third-person camera view
+        Vector3 forward = thirdPersonCamera.transform.forward;
+
+        yRotation = YawFromForward(forward);
+        xRotation = PitchFromForward(forward);
+        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+
+        orientation.rotation = Quaternion.Euler(0f, yRotation, 0f);
+        cameraTransform.rotation = Quaternion.Euler(xRotation, yRotation, 0f);
+
+        firstPersonCamera.Priority = 1;
+        thirdPersonCamera.Priority = 0;
+    }
+
+    public void SetThirdPerson()
+    {
+        isFirstPerson = false;
+
+        // Match third person orbit to current first-person yaw
+        thirdPersonOrbitalFollow.HorizontalAxis.Value = yRotation;
+        // Auto look from above
+        thirdPersonOrbitalFollow.VerticalAxis.Value = verticalDefault;
+
+        firstPersonCamera.Priority = 0;
+        thirdPersonCamera.Priority = 1;
     }
 
     float YawFromForward(Vector3 forward)
