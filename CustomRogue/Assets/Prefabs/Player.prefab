@@ -49,6 +49,7 @@ MonoBehaviour:
   orientation: {fileID: 8752823547925126031}
   defaultModel: {fileID: 8986085178694765968}
   burrowModel: {fileID: 8663939023080702302}
+  rubbleParticles: {fileID: 0}
 --- !u!1 &3585095307535415200
 GameObject:
   m_ObjectHideFlags: 0

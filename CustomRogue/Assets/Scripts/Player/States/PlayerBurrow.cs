@@ -52,6 +52,7 @@ public class PlayerBurrow : PlayerState
         Vector3 moveDirection = player.orientation.right * moveInput.x + player.orientation.forward * moveInput.y;
         Vector3 movement = moveDirection * Time.deltaTime * speed;
 
+        player.visuals.RotateBurrow(movement);
         player.controller.Move(movement);
     }
 }

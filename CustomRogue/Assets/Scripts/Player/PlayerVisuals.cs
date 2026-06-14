@@ -2,8 +2,12 @@ using UnityEngine;
 
 public class PlayerVisuals : MonoBehaviour
 {
-    [SerializeField] Transform orientation;
+    
+
+    [Header("Default")]
     [SerializeField] GameObject defaultModel;
+
+    [Header("Burrow")]
     [SerializeField] GameObject burrowModel;
 
     public void SetToDefault()
@@ -18,11 +22,17 @@ public class PlayerVisuals : MonoBehaviour
         burrowModel.SetActive(true);
     }
 
-    private void Update()
+    public void RotateBurrow(Vector3 velocity)
     {
-        if (burrowModel.activeSelf)
+        // Rotate with velocity
+        Vector3 moveDir = velocity;
+        moveDir.y = 0f;
+
+        if (moveDir.sqrMagnitude > 0.01f)
         {
-            burrowModel.transform.rotation = orientation.rotation;
+            Quaternion targetRotation = Quaternion.LookRotation(moveDir);
+
+            burrowModel.transform.rotation = Quaternion.Lerp(burrowModel.transform.rotation, targetRotation, 30f * Time.deltaTime);
         }
     }
 }
