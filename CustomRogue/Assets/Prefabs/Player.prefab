@@ -201,10 +201,14 @@ MonoBehaviour:
   orientation: {fileID: 8752823547925126031}
   input: {fileID: 0}
   visuals: {fileID: 2706821738901356854}
-  speed: 20
+  defaultState:
+    speed: 10
+    jumpHeight: 5
+  burrowState:
+    speed: 20
+    minJumpHeight: 1
+    maxJumpHeight: 10
   velocity: {x: 0, y: 0, z: 0}
-  jumpHeight: 5
-  canJump: 0
   groundCheck: {fileID: 1750768958191646867}
   groundRayRadius: 0.4
   groundMask:

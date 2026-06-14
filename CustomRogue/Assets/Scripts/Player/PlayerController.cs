@@ -12,17 +12,13 @@ public class PlayerController : MonoBehaviour
     [SerializeField] public PlayerVisuals visuals;
 
     // States
+    [Header("States")]
+    public PlayerDefault defaultState;
+    public PlayerBurrow burrowState;
     PlayerState currentState;
-    [HideInInspector] public PlayerDefault defaultState;
-    [HideInInspector] public PlayerBurrow burrowState;
 
-    [Header("Movement Stats")]
-    public float speed;
+    [Header("Movement")]
     [HideInInspector] public Vector3 velocity;
-
-    [Header("Jump")]
-    public float jumpHeight = 5;
-    [HideInInspector] public bool canJump = false;
 
     [Header("Ground Check")]
     [SerializeField] Transform groundCheck;
@@ -44,8 +40,6 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         // States
-        defaultState = new PlayerDefault();
-        burrowState = new PlayerBurrow();
         ChangeState(defaultState);
 
         controller = GetComponent<CharacterController>();

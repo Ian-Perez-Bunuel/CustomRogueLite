@@ -1,7 +1,16 @@
+using System;
 using UnityEngine;
 
+[Serializable]
 public class PlayerBurrow : PlayerState
 {
+    [Header("Movement")]
+    public float speed;
+
+    [Header("Jump")]
+    [SerializeField] float minJumpHeight;
+    [SerializeField] float maxJumpHeight;
+
     public override void OnEnter(PlayerController player)
     {
         player.visuals.SetToBurrow();
@@ -41,7 +50,7 @@ public class PlayerBurrow : PlayerState
         Vector2 moveInput = player.input.actions["Move"].ReadValue<Vector2>();
 
         Vector3 moveDirection = player.orientation.right * moveInput.x + player.orientation.forward * moveInput.y;
-        Vector3 movement = moveDirection * Time.deltaTime * player.speed;
+        Vector3 movement = moveDirection * Time.deltaTime * speed;
 
         player.controller.Move(movement);
     }
