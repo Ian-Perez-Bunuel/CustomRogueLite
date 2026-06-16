@@ -30,7 +30,7 @@ public class PlayerDefault : PlayerState
             player.ChangeState(player.burrowState);
         }
 
-        if (player.input.actions["Jump"].IsPressed() && canJump)
+        if (player.input.actions["Jump"].WasPressedThisFrame() && canJump)
         {
             Jump(player);
         }

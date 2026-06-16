@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Splines.Interpolators;
 
 [Serializable]
 public class PlayerBurrow : PlayerState
@@ -8,8 +9,10 @@ public class PlayerBurrow : PlayerState
     public float speed;
 
     [Header("Jump")]
-    [SerializeField] float minJumpHeight;
     [SerializeField] float maxJumpHeight;
+    float jumpHeight;
+    [SerializeField] float jumpChargeSpeed;
+    bool isChargingJump = false;
 
     public override void OnEnter(PlayerController player)
     {
@@ -24,9 +27,32 @@ public class PlayerBurrow : PlayerState
 
     public override void Update(PlayerController player)
     {
+        // Exit burrow
         if (player.burrow.action.WasPressedThisFrame())
         {
             player.ChangeState(player.defaultState);
+        }
+        // Started charge
+        if (player.input.actions["Jump"].WasPressedThisFrame())
+        {
+            isChargingJump = true;
+        }
+
+        // Jump out of burrow charge
+        if (player.input.actions["Jump"].IsInProgress())
+        {
+            jumpHeight += jumpChargeSpeed;
+
+            // Check if it's within bounds
+            if (jumpHeight >= maxJumpHeight)
+            {
+                Jump(player);
+            }
+        }
+        else if (isChargingJump)
+        {
+            if (player.input.actions["Jump"].WasReleasedThisFrame())
+                Jump(player);
         }
 
         // Gravity
@@ -54,5 +80,15 @@ public class PlayerBurrow : PlayerState
 
         player.visuals.RotateBurrow(movement);
         player.controller.Move(movement);
+    }
+
+    void Jump(PlayerController player)
+    {
+        isChargingJump = false;
+        player.velocity.y = Mathf.Sqrt(jumpHeight * -2 * player.gravity.GetGravity());
+
+        jumpHeight = 0.0f;
+
+        player.ChangeState(player.defaultState);
     }
 }
