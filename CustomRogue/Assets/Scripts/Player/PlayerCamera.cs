@@ -109,6 +109,14 @@ public class PlayerCamera : MonoBehaviour
         thirdPersonCamera.Priority = 1;
     }
 
+    public CinemachineCamera GetActiveCamera()
+    {
+        // Returns the active camera. Default of firstPerson
+        if (thirdPersonCamera.Priority == 1)
+            return thirdPersonCamera;
+        else
+            return firstPersonCamera;
+    }
     float YawFromForward(Vector3 forward)
     {
         forward.y = 0f;

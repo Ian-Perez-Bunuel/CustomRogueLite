@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dac441933c8369f498d6fe638a874315, type: 3}
+  m_Name: Test
+  m_EditorClassIdentifier: 
+  gunName: Test
+  bulletPrefab: {fileID: 753195229725817605, guid: 16d6cd47d09aa0f41a1e115d9d07f2dc, type: 3}
+  shootConfig: {fileID: 11400000, guid: b6536422305304348b18e2386873be28, type: 2}
+  trailConfig: {fileID: 0}
