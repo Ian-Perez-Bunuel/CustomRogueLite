@@ -1,12 +1,15 @@
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.Accessibility;
+using UnityEngine.Events;
 using UnityEngine.InputSystem;
 
 public class PlayerCamera : MonoBehaviour
 {
     float xRotation = 0f;
     float yRotation = 0f;
+
+    public UnityEvent cameraSwapped;
 
     public Transform orientation;
     public Transform cameraTransform;
@@ -76,6 +79,8 @@ public class PlayerCamera : MonoBehaviour
         {
             SetThirdPerson();
         }
+
+        cameraSwapped.Invoke();
     }
 
     public void SetFirstPerson()
@@ -94,6 +99,8 @@ public class PlayerCamera : MonoBehaviour
 
         firstPersonCamera.Priority = 1;
         thirdPersonCamera.Priority = 0;
+
+        cameraSwapped.Invoke();
     }
 
     public void SetThirdPerson()
@@ -107,6 +114,8 @@ public class PlayerCamera : MonoBehaviour
 
         firstPersonCamera.Priority = 0;
         thirdPersonCamera.Priority = 1;
+
+        cameraSwapped.Invoke();
     }
 
     public CinemachineCamera GetActiveCamera()

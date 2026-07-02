@@ -4,8 +4,13 @@ using UnityEngine.LightTransport;
 public class SphereTerraformer : Terraformer
 {
     public ComputeShader computeEditting;
-    public float radius;
+    float radius;
 
+
+    public void SetRadius(float r)
+    {
+        radius = r;
+    }
 
     public override void Edit()
     {
@@ -13,15 +18,10 @@ public class SphereTerraformer : Terraformer
         float radiusSq = radius * radius;
 
         computeEditting.SetFloat("radius", radius);
-        computeEditting.SetFloat("densityChange", densityChange);
         computeEditting.SetFloat("radiusSq", radiusSq);
         computeEditting.SetVector("sphereCenter", transform.position);
+        computeEditting.SetBool("breaking", breaking);
 
         world.EditSphere(computeEditting, transform.position, radius);
-    }
-
-    private void FixedUpdate()
-    {
-        Edit();
     }
 }

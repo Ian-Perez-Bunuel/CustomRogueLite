@@ -14,6 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   bulletName: Test
   canDestroy: 1
-  explosionRadius: 5
   speed: 150
   gravity: 0
+  explosionRadius: 3

@@ -11,5 +11,4 @@ public class GunScriptableObject : ScriptableObject
 
     // Settings
     public ShootConfigScriptableObject shootConfig;
-    public TrailConfigScriptableObject trailConfig;
 }

@@ -1,3 +1,4 @@
+#include "Generation/Includes/Noise.hlsl"
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
@@ -7,9 +8,10 @@ RWStructuredBuffer<float4> points;
 int numPointsPerAxis;
 
 float3 sphereCenter;
+float radius;
 float radiusSq;
 
-float densityChange; 
+bool breaking;
 
 [numthreads(numThreads, numThreads, numThreads)]
 void CSMain (uint3 id : SV_DispatchThreadID)
@@ -30,6 +32,10 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     if (distSq <= radiusSq)
     {
+        float dist = sqrt(distSq);
+        float t = 1.0 - (distSq / radiusSq);
+        float densityChange = breaking ? -t : t;
+        
         p.w = max(p.w + densityChange, 0.0);
         points[index] = p;
     }
