@@ -1,9 +1,10 @@
+#include "Generation/Includes/Point.hlsl"
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
 static const int numThreads = 8;
 
-RWStructuredBuffer<float4> points;
+RWStructuredBuffer<Point> points;
 int numPointsPerAxis;
 
 // Open Walls
@@ -24,7 +25,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     }
     
     uint index = id.x + id.y * numPointsPerAxis + id.z * numPointsPerAxis * numPointsPerAxis;
-    float4 p = points[index];
+    Point p = points[index];
     
     bool isClosed =
     (id.x == 0 && !leftOpen) ||
@@ -36,11 +37,11 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     
     if (isClosed)
     {
-        p.w = 1.0f;
+        p.density = 1.0f;
     }
     else
     {
-        p.w = 0.0f;
+        p.density = 0.0f;
     }
     
     points[index] = p;

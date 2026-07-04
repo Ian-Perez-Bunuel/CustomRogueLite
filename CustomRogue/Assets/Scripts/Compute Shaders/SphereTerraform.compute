@@ -1,10 +1,11 @@
 #include "Generation/Includes/Noise.hlsl"
+#include "Generation/Includes/Point.hlsl"
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
 static const int numThreads = 8;
 
-RWStructuredBuffer<float4> points;
+RWStructuredBuffer<Point> points;
 int numPointsPerAxis;
 
 float3 sphereCenter;
@@ -24,8 +25,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     
     uint index = id.x + id.y * numPointsPerAxis+ id.z * numPointsPerAxis * numPointsPerAxis;
 
-    float4 p = points[index];
-    float3 pos = p.xyz;
+    Point p = points[index];
+    float3 pos = p.position;
 
     float3 diff = pos - sphereCenter;
     float distSq = dot(diff, diff);
@@ -36,7 +37,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         float t = 1.0 - (distSq / radiusSq);
         float densityChange = breaking ? -t : t;
         
-        p.w = max(p.w + densityChange, 0.0);
+        p.density = max(p.density + densityChange, 0.0);
         points[index] = p;
     }
 }

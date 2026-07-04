@@ -1,7 +1,22 @@
+using System.Runtime.InteropServices;
 using UnityEngine;
+
+public enum PointMaterial
+{
+    Stone, // Default
+    Grass,
+}
 
 public class Chunk : MonoBehaviour
 {
+    [StructLayout(LayoutKind.Sequential)]
+    struct Point
+    {
+        public Vector3 position;
+        public float density;
+        public int material;
+    }
+
     // Mesh
     MeshFilter meshFilter;
     MeshRenderer meshRenderer;
@@ -34,7 +49,7 @@ public class Chunk : MonoBehaviour
 
         // Buffer
         numPoints = t_numPointsPerAxis * t_numPointsPerAxis * t_numPointsPerAxis;
-        pointsBuffer = new ComputeBuffer(numPoints, sizeof(float) * 4);
+        pointsBuffer = new ComputeBuffer(numPoints, sizeof(float) * 4 + sizeof(int)); // float3 + float + int
     }
 
     public int GetNumberOfPoints() { return numPoints; }

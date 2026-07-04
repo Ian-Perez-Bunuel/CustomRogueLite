@@ -1,6 +1,7 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel March
 #include "Includes/MarchTables.hlsl"
+#include "Includes/Point.hlsl"
 
 static const int numThreads = 8;
 
@@ -12,15 +13,15 @@ struct Triangle
 };
 
 AppendStructuredBuffer<Triangle> triangles;
-RWStructuredBuffer<float4> points;
+StructuredBuffer<Point> points;
 
 int numPointsPerAxis;
 float surfaceLevel;
 
-float3 interpolateVerts(float4 v1, float4 v2)
+float3 interpolateVerts(Point v1, Point v2)
 {
-    float t = (surfaceLevel - v1.w) / (v2.w - v1.w);
-    return v1.xyz + t * (v2.xyz - v1.xyz);
+    float t = (surfaceLevel - v1.density) / (v2.density - v1.density);
+    return v1.position + t * (v2.position - v1.position);
 }
 
 int indexFromCoord(int x, int y, int z)
@@ -38,7 +39,7 @@ void March(uint3 id : SV_DispatchThreadID)
     }
     
     // 8 corners of the current cube
-    float4 cubeCorners[8] =
+    Point cubeCorners[8] =
     {
         points[indexFromCoord(id.x, id.y, id.z)],
         points[indexFromCoord(id.x + 1, id.y, id.z)],
@@ -56,21 +57,21 @@ void March(uint3 id : SV_DispatchThreadID)
     // The value is used to look up the edge table, which indicates which edges of the cube are cut by the isosurface.    
     
     int cubeIndex = 0;
-    if (cubeCorners[0].w < surfaceLevel)
+    if (cubeCorners[0].density < surfaceLevel)
         cubeIndex |= 1;
-    if (cubeCorners[1].w < surfaceLevel)
+    if (cubeCorners[1].density < surfaceLevel)
         cubeIndex |= 2;
-    if (cubeCorners[2].w < surfaceLevel)
+    if (cubeCorners[2].density < surfaceLevel)
         cubeIndex |= 4;
-    if (cubeCorners[3].w < surfaceLevel)
+    if (cubeCorners[3].density < surfaceLevel)
         cubeIndex |= 8;
-    if (cubeCorners[4].w < surfaceLevel)
+    if (cubeCorners[4].density < surfaceLevel)
         cubeIndex |= 16;
-    if (cubeCorners[5].w < surfaceLevel)
+    if (cubeCorners[5].density < surfaceLevel)
         cubeIndex |= 32;
-    if (cubeCorners[6].w < surfaceLevel)
+    if (cubeCorners[6].density < surfaceLevel)
         cubeIndex |= 64;
-    if (cubeCorners[7].w < surfaceLevel)
+    if (cubeCorners[7].density < surfaceLevel)
         cubeIndex |= 128;
     
     
@@ -93,5 +94,4 @@ void March(uint3 id : SV_DispatchThreadID)
         tri.vertexC = interpolateVerts(cubeCorners[a2], cubeCorners[b2]);
         triangles.Append(tri);
     }
-
 }

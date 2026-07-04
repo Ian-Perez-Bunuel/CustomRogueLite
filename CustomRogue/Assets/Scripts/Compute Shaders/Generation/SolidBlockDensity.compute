@@ -17,7 +17,6 @@ void Density(int3 id : SV_DispatchThreadID)
 
     int index = indexFromCoord(id.x, id.y, id.z);
 
-    // xyz = position
-    // w   = density (1 = solid)
-    points[index] = float4(pos, 1.0f);
+    points[index].position = pos;
+    points[index].density = 1.0f;
 }

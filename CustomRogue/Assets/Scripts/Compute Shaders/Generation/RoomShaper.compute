@@ -48,11 +48,11 @@ void Density(int3 id : SV_DispatchThreadID)
     }
     int index = indexFromCoord(id.x, id.y, id.z);
     // Don't override anything already set
-    if (points[index].w >= 0.999)
+    if (points[index].density >= 0.999)
         return;
     
     // Positions
-    float3 pos = points[index].xyz;
+    float3 pos = points[index].position;
     
     // Min and Max of the room
     float3 roomMin = roomOrigin - boundsSize * 0.5f;
@@ -87,7 +87,7 @@ void Density(int3 id : SV_DispatchThreadID)
     
     float density = GetPointsDensity(noise, pos, roomMin, roomMax);
     
-    float finalValue = saturate(points[index].w + density);
+    float finalValue = saturate(points[index].density + density);
     
-    points[index] = float4(pos, finalValue);
+    points[index].density = finalValue;
 }
