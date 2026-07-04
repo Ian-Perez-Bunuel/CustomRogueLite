@@ -1,5 +1,6 @@
 #pragma kernel Density
 #include "Includes/Density.hlsl"
+#include "Includes/Noise.hlsl"
 
 [numthreads(numThreads, numThreads, numThreads)]
 void Density(int3 id : SV_DispatchThreadID)
@@ -16,7 +17,15 @@ void Density(int3 id : SV_DispatchThreadID)
     float3 pos = chunkCentre + id * spacing - boundsSize / 2;
 
     int index = indexFromCoord(id.x, id.y, id.z);
-
+    
+    float n = snoise((pos) * 0.5);
+    
+    int mat = 0;
+    
+    if (n > 0.5f)
+        mat = 1;
+    
+    points[index].material = mat;
     points[index].position = pos;
     points[index].density = 1.0f;
 }

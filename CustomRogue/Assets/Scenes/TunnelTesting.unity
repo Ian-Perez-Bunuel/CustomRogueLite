@@ -1212,7 +1212,8 @@ MonoBehaviour:
   densityGenerator: {fileID: 1219391082}
   worldDimensions: {x: 10, y: 10, z: 10}
   chunkHolder: {fileID: 2035433975}
-  material: {fileID: 2100000, guid: 28d182add7633af4da48475503ef4627, type: 2}
+  materials:
+  - {fileID: 2100000, guid: 28d182add7633af4da48475503ef4627, type: 2}
   worldSettings: {fileID: 11400000, guid: 2c14bb3260bf8584a81baddf27dd4fe5, type: 2}
 --- !u!4 &512976028
 Transform:

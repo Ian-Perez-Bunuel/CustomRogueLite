@@ -13,6 +13,8 @@ public class MarchingCubesCompute : MonoBehaviour
         public Vector3 b;
         public Vector3 c;
 
+        public int material;
+
         // Allows indexing
         public Vector3 this[int i]
         {
@@ -42,7 +44,7 @@ public class MarchingCubesCompute : MonoBehaviour
     List<Chunk> chunks;
 
     [Header("Voxel Settings")]
-    public Material material;
+    public Material[] materials;
     public WorldSettings worldSettings;
 
     // Buffers
@@ -87,7 +89,7 @@ public class MarchingCubesCompute : MonoBehaviour
     void DispatchComputeShader(Chunk chunk)
     {
         int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
-        int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
+        int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 4f);
 
         triangleBuffer.SetCounterValue(0);
         computeShader.SetBuffer(kernel, "points", chunk.pointsBuffer);
@@ -113,14 +115,23 @@ public class MarchingCubesCompute : MonoBehaviour
         Triangle[] tris = new Triangle[numTris];
         triangleBuffer.GetData(tris, 0, 0, numTris);
         var meshVertices = new Vector3[numTris * 3];
-        var meshTriangles = new int[numTris * 3];
+        // One triangle index list per material
+        List<int>[] submeshTriangles = new List<int>[materials.Length];
+
+        for (int m = 0; m < materials.Length; m++)
+        {
+            submeshTriangles[m] = new List<int>();
+        }
 
         for (int i = 0; i < numTris; i++)
         {
+            int matIndex = Mathf.Clamp(tris[i].material, 0, materials.Length - 1);
+
             for (int j = 0; j < 3; j++)
             {
-                meshTriangles[i * 3 + j] = i * 3 + j;
-                meshVertices[i * 3 + j] = tris[i][j];
+                int vertIndex = i * 3 + j;
+                meshVertices[vertIndex] = tris[i][j];
+                submeshTriangles[matIndex].Add(vertIndex);
             }
         }
 
@@ -128,7 +139,13 @@ public class MarchingCubesCompute : MonoBehaviour
         mesh.Clear();
 
         mesh.vertices = meshVertices;
-        mesh.triangles = meshTriangles;
+        mesh.subMeshCount = materials.Length;
+
+        for (int m = 0; m < materials.Length; m++)
+        {
+            mesh.SetTriangles(submeshTriangles[m], m);
+        }
+
         mesh.RecalculateNormals();
         chunk.SetCollider();
         chunk.valuesChanged = false;
@@ -155,21 +172,36 @@ public class MarchingCubesCompute : MonoBehaviour
         Triangle[] tris = new Triangle[numTris];
         triangleBuffer.GetData(tris, 0, 0, numTris);
         var meshVertices = new Vector3[numTris * 3];
-        var meshTriangles = new int[numTris * 3];
+        // One triangle index list per material
+        List<int>[] submeshTriangles = new List<int>[materials.Length];
+
+        for (int m = 0; m < materials.Length; m++)
+        {
+            submeshTriangles[m] = new List<int>();
+        }
 
         for (int i = 0; i < numTris; i++)
         {
+            int matIndex = Mathf.Clamp(tris[i].material, 0, materials.Length - 1);
+
             for (int j = 0; j < 3; j++)
             {
-                meshTriangles[i * 3 + j] = i * 3 + j;
-                meshVertices[i * 3 + j] = tris[i][j];
+                int vertIndex = i * 3 + j;
+                meshVertices[vertIndex] = tris[i][j];
+                submeshTriangles[matIndex].Add(vertIndex);
             }
         }
 
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         mesh.vertices = meshVertices;
-        mesh.triangles = meshTriangles;
+        mesh.subMeshCount = materials.Length;
+
+        for (int m = 0; m < materials.Length; m++)
+        {
+            mesh.SetTriangles(submeshTriangles[m], m);
+        }
+
         mesh.RecalculateNormals();
         chunk.SetMesh(mesh);
     }
@@ -181,7 +213,7 @@ public class MarchingCubesCompute : MonoBehaviour
         int numVoxels = numVoxelsPerAxis * numVoxelsPerAxis * numVoxelsPerAxis;
         int maxTriangleCount = numVoxels * 5;
 
-        triangleBuffer = new ComputeBuffer(maxTriangleCount, sizeof(float) * 3 * 3, ComputeBufferType.Append);
+        triangleBuffer = new ComputeBuffer(maxTriangleCount, sizeof(float) * 3 * 3 + sizeof(int), ComputeBufferType.Append);
         triCountBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
     }
 
@@ -249,7 +281,7 @@ public class MarchingCubesCompute : MonoBehaviour
                     for (int z = 0; z < worldDimensions.z; z++)
                     {
                         Chunk chunk = CreateChunk(new Vector3Int(x, y, z));
-                        chunk.Setup(material, worldSettings.numPointsPerAxis);
+                        chunk.Setup(materials, worldSettings.numPointsPerAxis);
                         chunks.Add(chunk);
                     }
                 }

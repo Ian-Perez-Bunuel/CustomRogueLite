@@ -3,13 +3,15 @@
 #include "Includes/MarchTables.hlsl"
 #include "Includes/Point.hlsl"
 
-static const int numThreads = 8;
+static const int numThreads = 4;
 
 struct Triangle
 {
     float3 vertexC;
     float3 vertexB;
     float3 vertexA;
+    
+    int material;
 };
 
 AppendStructuredBuffer<Triangle> triangles;
@@ -92,6 +94,9 @@ void March(uint3 id : SV_DispatchThreadID)
         tri.vertexA = interpolateVerts(cubeCorners[a0], cubeCorners[b0]);
         tri.vertexB = interpolateVerts(cubeCorners[a1], cubeCorners[b1]);
         tri.vertexC = interpolateVerts(cubeCorners[a2], cubeCorners[b2]);
+        
+        tri.material = cubeCorners[0].material;
+        
         triangles.Append(tri);
     }
 }

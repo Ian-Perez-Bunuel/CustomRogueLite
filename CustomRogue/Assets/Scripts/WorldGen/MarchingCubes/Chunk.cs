@@ -30,7 +30,7 @@ public class Chunk : MonoBehaviour
     Vector3Int coords;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    public void Setup(Material mat, int t_numPointsPerAxis)
+    public void Setup(Material[] mats, int t_numPointsPerAxis)
     {
         if (GetComponent<MeshFilter>() == null)
         {
@@ -45,7 +45,7 @@ public class Chunk : MonoBehaviour
             meshRenderer = gameObject.AddComponent<MeshRenderer>();
         }
 
-        meshRenderer.material = mat;
+        meshRenderer.sharedMaterials = mats;
 
         // Buffer
         numPoints = t_numPointsPerAxis * t_numPointsPerAxis * t_numPointsPerAxis;
@@ -54,22 +54,22 @@ public class Chunk : MonoBehaviour
 
     public int GetNumberOfPoints() { return numPoints; }
 
-    public void SetCoords(Vector3Int c) 
-    { 
-        coords = c; 
+    public void SetCoords(Vector3Int c)
+    {
+        coords = c;
     }
-    public Vector3Int GetCoords() 
+    public Vector3Int GetCoords()
     { return coords; }
-    
+
     public void SetMesh(Mesh mesh)
     {
         meshFilter.sharedMesh = mesh;
         meshCollider.sharedMesh = meshFilter.sharedMesh;
     }
 
-    public Mesh GetMesh() 
-    { 
-        return meshFilter.sharedMesh; 
+    public Mesh GetMesh()
+    {
+        return meshFilter.sharedMesh;
     }
 
     public Vector3 GetOrigin(float boundsSize)
@@ -77,9 +77,9 @@ public class Chunk : MonoBehaviour
         return new Vector3(coords.x, coords.y, coords.z) * boundsSize;
     }
 
-    public void SetCollider() 
+    public void SetCollider()
     {
-        meshCollider.sharedMesh = meshFilter.sharedMesh; 
+        meshCollider.sharedMesh = meshFilter.sharedMesh;
     }
 
     public void ReleaseBuffers()
