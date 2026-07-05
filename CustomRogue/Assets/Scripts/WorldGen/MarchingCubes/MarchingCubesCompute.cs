@@ -35,6 +35,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
     [Header("Compute Shader")]
     public ComputeShader computeShader;
+    [SerializeField] ComputeShader regenComputeShader;
 
     [Header("Generation Data")]
     public DensityGenerator densityGenerator;
@@ -52,16 +53,11 @@ public class MarchingCubesCompute : MonoBehaviour
     int kernel;
     ComputeBuffer triangleBuffer;
     ComputeBuffer triCountBuffer;
-    int numThreadsPerAxis;
+    public static int numThreadsPerAxis;
 
     public float GetSurfaceLevel()
     {
         return worldSettings.surfaceLevel;
-    }
-
-    public void AddToDirtyChunks(Chunk c)
-    {
-        dirtyChunks.Enqueue(c);
     }
 
     public Vector3 GetDimensions()
@@ -85,6 +81,8 @@ public class MarchingCubesCompute : MonoBehaviour
 
         chunks = new List<Chunk>();
         dirtyChunks = new Queue<Chunk>();
+
+        // Chunk.SetRegenCompute(regenComputeShader);
 
         int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
         numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 4f);
@@ -364,8 +362,8 @@ public class MarchingCubesCompute : MonoBehaviour
                     // Other variables are passed in the terraformer
 
                     computeEditting.Dispatch(0, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
-                    
-                    dirtyChunks.Enqueue(chunk);
+
+                    chunk.HasChanged();
                 }
             }
         }
@@ -386,7 +384,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
         computeEditting.Dispatch(editKernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
 
-        dirtyChunks.Enqueue(chunk);
+        chunk.HasChanged();
     }
 
     public void EditTunnel(ComputeShader computeEditting, Vector3 cylinderStart, Vector3 cylinderEnd, float startRadius, float endRadius)
@@ -434,7 +432,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
                     computeEditting.Dispatch(kernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
 
-                    dirtyChunks.Enqueue(chunk);
+                    chunk.HasChanged();
                 }
             }
         }

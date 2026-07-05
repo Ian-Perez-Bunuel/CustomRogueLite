@@ -1,0 +1,45 @@
+#include "Generation/Includes/Point.hlsl"
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+static const int numThreads = 8;
+
+RWStructuredBuffer<Point> points;
+StructuredBuffer<Point> originalPoints; // Read only
+
+float regenAmount;
+
+int numPointsPerAxis;
+
+[numthreads(numThreads, numThreads, numThreads)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    // Stop if out of range
+    if (id.x >= numPointsPerAxis || id.y >= numPointsPerAxis || id.z >= numPointsPerAxis)
+    {
+        return;
+    }
+    
+    uint index = id.x + id.y * numPointsPerAxis + id.z * numPointsPerAxis * numPointsPerAxis;
+    Point p = points[index];
+    Point originalP = originalPoints[index];
+    
+    // Not changed
+    if (p.density == originalP.density)
+    {
+        return;
+    }
+    
+    if (p.density < originalP.density)
+    {
+        // Move p.density towards original.density at regenSpeed
+        p.density += regenAmount;
+    }
+    else if (p.density > originalP.density)
+    {
+        p.density = originalP.density;
+    }
+    
+    
+    points[index] = p;
+}

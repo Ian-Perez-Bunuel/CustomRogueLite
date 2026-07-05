@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
@@ -29,6 +30,18 @@ public class Chunk : MonoBehaviour
     int numPoints;
 
     Vector3Int coords;
+
+    //[Header("Regen")]
+    //static ComputeShader regenComputeShader;
+    //static float regenAmount = 0.01f;
+    //public int timeTillRegen = 2; // Seconds
+    //public float regenSpeed = 0.5f; // Time between regen changes
+
+    //public static void SetRegenCompute(ComputeShader shader)
+    //{
+    //    regenComputeShader = shader;
+    //    regenComputeShader.SetFloat("regenAmount", regenAmount);
+    //}
 
     public void SetSubmeshAmount(int amount)
     {
@@ -77,6 +90,9 @@ public class Chunk : MonoBehaviour
         numPoints = t_numPointsPerAxis * t_numPointsPerAxis * t_numPointsPerAxis;
         pointsBuffer = new ComputeBuffer(numPoints, sizeof(float) * 4 + sizeof(int)); // float3 + float + int
         originalPointsBuffer = new ComputeBuffer(numPoints, sizeof(float) * 4 + sizeof(int)); // float3 + float + int
+
+        //regenComputeShader.SetBuffer(0, "points", pointsBuffer);
+        //regenComputeShader.SetBuffer(0, "originalPoints", originalPointsBuffer);
     }
 
     public void SetOriginalPoints()
@@ -114,6 +130,28 @@ public class Chunk : MonoBehaviour
     {
         meshCollider.sharedMesh = meshFilter.sharedMesh;
     }
+
+    // Regen
+    public void HasChanged()
+    {
+        MarchingCubesCompute.dirtyChunks.Enqueue(this);
+        //StopCoroutine(RegenTimer()); // Reset timer
+
+        //StartCoroutine(RegenTimer());
+    }
+    //IEnumerator RegenTimer()
+    //{
+    //    yield return new WaitForSeconds(timeTillRegen);
+
+    //    StartCoroutine(Regenerate());
+    //}
+    //IEnumerator Regenerate()
+    //{
+    //    yield return new WaitForSeconds(regenSpeed);
+
+    //    regenComputeShader.Dispatch(0, MarchingCubesCompute.numThreadsPerAxis, MarchingCubesCompute.numThreadsPerAxis, MarchingCubesCompute.numThreadsPerAxis);
+    //    MarchingCubesCompute.dirtyChunks.Enqueue(this);
+    //}
 
     public void ReleaseBuffers()
     {

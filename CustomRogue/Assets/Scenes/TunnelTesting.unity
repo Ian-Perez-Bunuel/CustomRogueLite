@@ -1214,6 +1214,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   computeShader: {fileID: 7200000, guid: ce2abebbaba5f5a47b496c8971aad8f1, type: 3}
+  regenComputeShader: {fileID: 7200000, guid: 9aaaa03f36b7b654bb6527ba2094646e, type: 3}
   densityGenerator: {fileID: 1219391082}
   worldDimensions: {x: 10, y: 10, z: 10}
   chunkHolder: {fileID: 2035433975}

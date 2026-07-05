@@ -35,6 +35,6 @@ public class BaseRoomGenerator : MonoBehaviour
 
         densityGenerator.Generate(chunk.pointsBuffer, world.worldSettings.numPointsPerAxis, world.worldSettings.boundsSize, roomDimensions, roomOrigin, centre, world.worldSettings.offset, pointSpacing);
 
-        world.AddToDirtyChunks(chunk);
+        chunk.HasChanged();
     }
 }

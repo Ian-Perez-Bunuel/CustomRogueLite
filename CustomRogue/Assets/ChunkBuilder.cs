@@ -82,7 +82,7 @@ public class ChunkBuilder : MonoBehaviour
         // Apply point info
         chunk.pointsBuffer.SetData(points);
         // Set chunk as changed
-        MarchingCubesCompute.dirtyChunks.Enqueue(chunk);
+        chunk.HasChanged();
     }
 
     public void DistortChunk()
@@ -109,7 +109,7 @@ public class ChunkBuilder : MonoBehaviour
         }
 
         chunk.pointsBuffer.SetData(points);
-        MarchingCubesCompute.dirtyChunks.Enqueue(chunk);
+        chunk.HasChanged();
     }
 
     void SetToNearestPoint(Transform objTransform, Vector4[] points)
