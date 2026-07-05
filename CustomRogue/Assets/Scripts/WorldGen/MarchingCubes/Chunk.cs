@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
@@ -21,12 +22,38 @@ public class Chunk : MonoBehaviour
     MeshFilter meshFilter;
     MeshRenderer meshRenderer;
     MeshCollider meshCollider;
+    List<int>[] submeshTriangles;
 
     public ComputeBuffer originalPointsBuffer = null;
     public ComputeBuffer pointsBuffer;
     int numPoints;
 
     Vector3Int coords;
+
+    public void SetSubmeshAmount(int amount)
+    {
+        submeshTriangles = new List<int>[amount];
+
+        for (int i = 0; i < amount; i++)
+        {
+            submeshTriangles[i] = new List<int>();
+        }
+    }
+    public void AddVertexIndexTo(int matIndex, int vertIndex)
+    {
+        submeshTriangles[matIndex].Add(vertIndex);
+    }
+    public List<int> GetTris(int i)
+    {
+        return submeshTriangles[i];
+    }
+    public void ClearTris()
+    {
+        for (int i = 0; i < submeshTriangles.Length; i++)
+        {
+            submeshTriangles[i].Clear();
+        }
+    }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     public void Setup(Material[] mats, int t_numPointsPerAxis)

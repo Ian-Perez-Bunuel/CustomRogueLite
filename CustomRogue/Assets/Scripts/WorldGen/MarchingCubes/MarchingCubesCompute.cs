@@ -1,4 +1,4 @@
-using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
@@ -52,6 +52,7 @@ public class MarchingCubesCompute : MonoBehaviour
     int kernel;
     ComputeBuffer triangleBuffer;
     ComputeBuffer triCountBuffer;
+    int numThreadsPerAxis;
 
     public float GetSurfaceLevel()
     {
@@ -85,6 +86,9 @@ public class MarchingCubesCompute : MonoBehaviour
         chunks = new List<Chunk>();
         dirtyChunks = new Queue<Chunk>();
 
+        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
+        numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 4f);
+
         UpdateWorld();
     }
 
@@ -95,9 +99,6 @@ public class MarchingCubesCompute : MonoBehaviour
 
     void DispatchComputeShader(Chunk chunk)
     {
-        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
-        int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 4f);
-
         triangleBuffer.SetCounterValue(0);
         computeShader.SetBuffer(kernel, "points", chunk.pointsBuffer);
         computeShader.SetBuffer(kernel, "triangles", triangleBuffer);
@@ -119,16 +120,12 @@ public class MarchingCubesCompute : MonoBehaviour
         int numTris = triCountArray[0];
 
         // Get triangle data from shader
-        Triangle[] tris = new Triangle[numTris];
+        Triangle[] tris = ArrayPool<Triangle>.Shared.Rent(numTris);
+        Vector3[] meshVertices = ArrayPool<Vector3>.Shared.Rent(numTris * 3);
         triangleBuffer.GetData(tris, 0, 0, numTris);
-        var meshVertices = new Vector3[numTris * 3];
-        // One triangle index list per material
-        List<int>[] submeshTriangles = new List<int>[materials.Length];
 
-        for (int m = 0; m < materials.Length; m++)
-        {
-            submeshTriangles[m] = new List<int>();
-        }
+        // One triangle index list per material
+        chunk.ClearTris();
 
         for (int i = 0; i < numTris; i++)
         {
@@ -138,20 +135,24 @@ public class MarchingCubesCompute : MonoBehaviour
             {
                 int vertIndex = i * 3 + j;
                 meshVertices[vertIndex] = tris[i][j];
-                submeshTriangles[matIndex].Add(vertIndex);
+
+                chunk.AddVertexIndexTo(matIndex, vertIndex);
             }
         }
 
         Mesh mesh = chunk.GetMesh();
-        mesh.Clear();
+        mesh.Clear(false);
 
-        mesh.vertices = meshVertices;
+        mesh.SetVertices(meshVertices, 0, numTris * 3);
         mesh.subMeshCount = materials.Length;
 
         for (int m = 0; m < materials.Length; m++)
         {
-            mesh.SetTriangles(submeshTriangles[m], m);
+            mesh.SetTriangles(chunk.GetTris(m), m);
         }
+
+        ArrayPool<Triangle>.Shared.Return(tris);
+        ArrayPool<Vector3>.Shared.Return(meshVertices);
 
         mesh.RecalculateNormals();
         chunk.SetCollider();
@@ -179,12 +180,7 @@ public class MarchingCubesCompute : MonoBehaviour
         triangleBuffer.GetData(tris, 0, 0, numTris);
         var meshVertices = new Vector3[numTris * 3];
         // One triangle index list per material
-        List<int>[] submeshTriangles = new List<int>[materials.Length];
-
-        for (int m = 0; m < materials.Length; m++)
-        {
-            submeshTriangles[m] = new List<int>();
-        }
+        chunk.SetSubmeshAmount(materials.Length);
 
         for (int i = 0; i < numTris; i++)
         {
@@ -194,7 +190,7 @@ public class MarchingCubesCompute : MonoBehaviour
             {
                 int vertIndex = i * 3 + j;
                 meshVertices[vertIndex] = tris[i][j];
-                submeshTriangles[matIndex].Add(vertIndex);
+                chunk.AddVertexIndexTo(matIndex, vertIndex);
             }
         }
 
@@ -205,7 +201,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
         for (int m = 0; m < materials.Length; m++)
         {
-            mesh.SetTriangles(submeshTriangles[m], m);
+            mesh.SetTriangles(chunk.GetTris(m), m);
         }
 
         mesh.RecalculateNormals();
@@ -363,7 +359,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
                     // This uses world-space positions stored in the buffer,
                     // so we can pass the same worldPos & radius to every chunk.
-                    computeEditting.SetBuffer(kernel, "points", chunk.pointsBuffer);
+                    computeEditting.SetBuffer(0, "points", chunk.pointsBuffer);
                     computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
                     // Other variables are passed in the terraformer
 
@@ -428,7 +424,7 @@ public class MarchingCubesCompute : MonoBehaviour
                     if (chunk == null)
                         continue;
 
-                    computeEditting.SetBuffer(kernel, "points", chunk.pointsBuffer);
+                    computeEditting.SetBuffer(0, "points", chunk.pointsBuffer);
                     computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
 
                     computeEditting.SetVector("cylinderStart", cylinderStart);

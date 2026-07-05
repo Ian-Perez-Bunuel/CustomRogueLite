@@ -88,7 +88,7 @@ public class GunManager : MonoBehaviour
         else
         {
             // Nothing hit, shoot into the distance
-            targetPoint = ray.GetPoint(50f);
+            targetPoint = ray.GetPoint(1000f);
         }
 
         return (targetPoint - shootPointTransform.position).normalized;
