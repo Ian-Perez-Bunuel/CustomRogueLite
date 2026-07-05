@@ -14,6 +14,8 @@ float radiusSq;
 
 bool breaking;
 
+RWStructuredBuffer<int> ammos;
+
 [numthreads(numThreads, numThreads, numThreads)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
@@ -36,6 +38,10 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         float dist = sqrt(distSq);
         float t = 1.0 - (distSq / radiusSq);
         float densityChange = breaking ? -t : t;
+        
+        // When breaking add to the ammo
+        if (breaking)
+            ammos[p.material]++;
         
         p.density = max(p.density + densityChange, 0.0);
         points[index] = p;

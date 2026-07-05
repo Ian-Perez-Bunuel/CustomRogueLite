@@ -16,4 +16,4 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 8
   spread: {x: 0.1, y: 0.1, z: 0.1}
-  fireRate: 0.02
+  fireRate: 0.2

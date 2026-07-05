@@ -359,10 +359,13 @@ public class MarchingCubesCompute : MonoBehaviour
                     // so we can pass the same worldPos & radius to every chunk.
                     computeEditting.SetBuffer(0, "points", chunk.pointsBuffer);
                     computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
-                    // Other variables are passed in the terraformer
+
+                    // Ammo Buffer
+                    computeEditting.SetBuffer(0, "ammos", GunManager.ammoBuffer);
 
                     computeEditting.Dispatch(0, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
 
+                    GunManager.UpdateAmmoCPU();
                     chunk.HasChanged();
                 }
             }

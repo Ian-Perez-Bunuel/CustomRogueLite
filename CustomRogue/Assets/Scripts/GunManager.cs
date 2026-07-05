@@ -1,4 +1,6 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Pool;
 
@@ -6,6 +8,10 @@ public class GunManager : MonoBehaviour
 {
     // Shared between all guns
     static PlayerCamera playerCamera;
+
+    // Shared ammo
+    public static ComputeBuffer ammoBuffer;
+    static int[] ammo;
 
     public GunScriptableObject gunConfig;
     public Transform shootPointTransform;
@@ -21,6 +27,21 @@ public class GunManager : MonoBehaviour
 
     void Awake()
     {
+        if (ammoBuffer == null)
+        {
+            int amountOfAmmos = Enum.GetValues(typeof(PointMaterial)).Length;
+
+            ammo = new int[amountOfAmmos];
+            ammoBuffer = new ComputeBuffer(amountOfAmmos, sizeof(int));
+
+            // Set base ammo to 100 on all materials
+            for (int i = 0; i < amountOfAmmos; i++) 
+            {
+                ammo[i] = 100;
+            }
+            UpdateAmmoGPU();
+        }
+
         bulletPool = new ObjectPool<BulletManager>(
             CreateBullet,
             OnTakeBullet,
@@ -30,6 +51,15 @@ public class GunManager : MonoBehaviour
             defaultCapacity: 20,
             maxSize: 100
         );
+    }
+
+    public static void UpdateAmmoCPU()
+    {
+        ammoBuffer.GetData(ammo);
+    }
+    public static void UpdateAmmoGPU()
+    {
+        ammoBuffer.SetData(ammo);
     }
 
     BulletManager CreateBullet()
@@ -58,9 +88,13 @@ public class GunManager : MonoBehaviour
 
     public void Shoot()
     {
-        if (canShoot)
+        if (canShoot && ammo[(int)gunConfig.ammoType] >= gunConfig.ammoPerShot)
         {
             BulletManager bullet = bulletPool.Get();
+
+            // Reduce ammo
+            ammo[(int)gunConfig.ammoType] -= gunConfig.ammoPerShot;
+            UpdateAmmoGPU();
 
             StartCoroutine(ShotDelay());
         }
@@ -92,5 +126,15 @@ public class GunManager : MonoBehaviour
         }
 
         return (targetPoint - shootPointTransform.position).normalized;
+    }
+
+    void OnDestroy()
+    {
+        if (ammoBuffer != null)
+        {
+            ammoBuffer.Release();
+            ammoBuffer = null;
+            ammo = null;
+        }
     }
 }

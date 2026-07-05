@@ -5,10 +5,12 @@ using UnityEngine.Pool;
 public class GunScriptableObject : ScriptableObject
 {
     public string gunName;
+    [Header("Ammo")]
+    public PointMaterial ammoType;
+    public int ammoPerShot = 1;
 
     // Bullet
     public GameObject bulletPrefab;
-
     // Settings
     public ShootConfigScriptableObject shootConfig;
 }
