@@ -42,6 +42,7 @@ public class MarchingCubesCompute : MonoBehaviour
     public Vector3 worldDimensions;
     [SerializeField] GameObject chunkHolder;
     List<Chunk> chunks;
+    public static Queue<Chunk> dirtyChunks;
 
     [Header("Voxel Settings")]
     public Material[] materials;
@@ -55,6 +56,11 @@ public class MarchingCubesCompute : MonoBehaviour
     public float GetSurfaceLevel()
     {
         return worldSettings.surfaceLevel;
+    }
+
+    public void AddToDirtyChunks(Chunk c)
+    {
+        dirtyChunks.Enqueue(c);
     }
 
     public Vector3 GetDimensions()
@@ -77,6 +83,7 @@ public class MarchingCubesCompute : MonoBehaviour
         kernel = computeShader.FindKernel("March");
 
         chunks = new List<Chunk>();
+        dirtyChunks = new Queue<Chunk>();
 
         UpdateWorld();
     }
@@ -101,7 +108,7 @@ public class MarchingCubesCompute : MonoBehaviour
     }
 
     // Builds the mesh without re-generating it's noise. Instead goes off of it's current point values
-    void RebuildMesh(Chunk chunk)
+    public void RebuildMesh(Chunk chunk)
     {
         DispatchComputeShader(chunk);
 
@@ -148,7 +155,6 @@ public class MarchingCubesCompute : MonoBehaviour
 
         mesh.RecalculateNormals();
         chunk.SetCollider();
-        chunk.valuesChanged = false;
     }
 
     void GenerateMesh(Chunk chunk)
@@ -294,12 +300,10 @@ public class MarchingCubesCompute : MonoBehaviour
 
     private void FixedUpdate()
     {
-        foreach (Chunk chunk in chunks)
+        while (dirtyChunks.Count > 0)
         {
-            if (chunk.valuesChanged)
-            {
-                RebuildMesh(chunk);
-            }
+            Chunk chunk = dirtyChunks.Dequeue();
+            RebuildMesh(chunk);
         }
     }
 
@@ -364,7 +368,8 @@ public class MarchingCubesCompute : MonoBehaviour
                     // Other variables are passed in the terraformer
 
                     computeEditting.Dispatch(0, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
-                    chunk.valuesChanged = true;
+                    
+                    dirtyChunks.Enqueue(chunk);
                 }
             }
         }
@@ -385,7 +390,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
         computeEditting.Dispatch(editKernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
 
-        chunk.valuesChanged = true;
+        dirtyChunks.Enqueue(chunk);
     }
 
     public void EditTunnel(ComputeShader computeEditting, Vector3 cylinderStart, Vector3 cylinderEnd, float startRadius, float endRadius)
@@ -433,7 +438,7 @@ public class MarchingCubesCompute : MonoBehaviour
 
                     computeEditting.Dispatch(kernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
 
-                    chunk.valuesChanged = true;
+                    dirtyChunks.Enqueue(chunk);
                 }
             }
         }

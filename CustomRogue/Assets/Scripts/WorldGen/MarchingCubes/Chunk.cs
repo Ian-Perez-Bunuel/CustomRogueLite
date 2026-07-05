@@ -22,10 +22,9 @@ public class Chunk : MonoBehaviour
     MeshRenderer meshRenderer;
     MeshCollider meshCollider;
 
+    public ComputeBuffer originalPointsBuffer = null;
     public ComputeBuffer pointsBuffer;
     int numPoints;
-
-    [HideInInspector] public bool valuesChanged = false;
 
     Vector3Int coords;
 
@@ -50,6 +49,13 @@ public class Chunk : MonoBehaviour
         // Buffer
         numPoints = t_numPointsPerAxis * t_numPointsPerAxis * t_numPointsPerAxis;
         pointsBuffer = new ComputeBuffer(numPoints, sizeof(float) * 4 + sizeof(int)); // float3 + float + int
+        originalPointsBuffer = new ComputeBuffer(numPoints, sizeof(float) * 4 + sizeof(int)); // float3 + float + int
+    }
+
+    public void SetOriginalPoints()
+    {
+        if (originalPointsBuffer == null)
+            originalPointsBuffer = pointsBuffer;
     }
 
     public int GetNumberOfPoints() { return numPoints; }
@@ -88,6 +94,12 @@ public class Chunk : MonoBehaviour
         {
             pointsBuffer.Release();
             pointsBuffer = null;
+        }
+
+        if (originalPointsBuffer != null)
+        {
+            originalPointsBuffer.Release();
+            originalPointsBuffer = null;
         }
     }
 }

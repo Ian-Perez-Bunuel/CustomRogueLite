@@ -5,14 +5,38 @@ using UnityEngine;
 
 public class RoomManager : MonoBehaviour
 {
+    public struct Room
+    {
+        public List<Chunk> chunks;
+        public Vector3Int dimensions;
+        public Vector3 min;
+        public Vector3 max;
+
+        public Room(Vector3Int d)
+        {
+            dimensions = d;
+            chunks = new List<Chunk>();
+            min = Vector3.zero;
+            max = Vector3.zero;
+        }
+
+        public void AddChunk(Chunk chunk)
+        {
+            chunks.Add(chunk);
+        }
+    }
+
     [SerializeField] ComputeShader clearRoomCompute;
     [SerializeField] MarchingCubesCompute world;
     [SerializeField] BaseRoomGenerator roomNoiseGenerator;
+    [SerializeField] Transform playerTransform;
+
     static Vector3 chunkDimensions;
 
     [SerializeField] int amountOfRooms;
 
-    Dictionary<List<Chunk>, Vector3Int> roomsWithSize = new Dictionary<List<Chunk>, Vector3Int>();
+    List<Room> allRooms;
+
 
     enum Direction
     {
@@ -28,6 +52,7 @@ public class RoomManager : MonoBehaviour
     void Start()
     {
         chunkDimensions = world.GetChunkDimensions();
+        allRooms = new List<Room>();
     }
 
     private void Update()
@@ -52,12 +77,12 @@ public class RoomManager : MonoBehaviour
 
     private void CreateRoom(Vector3Int roomDimensions)
     {
-        // Holds all the chunks in the room
-        List<Chunk> room = new List<Chunk>();
+        Room room = new Room(roomDimensions);
 
         // Starting chunk is the min chunk
         Vector3 startingChunkPos = GetRandomWorldPos();
         Chunk startingChunk = world.GetChunkFromWorldPos(startingChunkPos);
+        SetRoomMinMax(ref room, startingChunk);
 
         if (startingChunk == null)
         {
@@ -111,7 +136,7 @@ public class RoomManager : MonoBehaviour
                     SetOpenedArea(Direction.Front, z < roomDimensions.z - 1);
 
                     // Clear the chunk
-                    room.Add(c);
+                    room.AddChunk(c);
                     ClearChunk(c);
                 }
             }
@@ -120,15 +145,57 @@ public class RoomManager : MonoBehaviour
         Vector3 roomOrigin = startingChunk.GetOrigin(world.worldSettings.boundsSize);
 
         // Generate base room noise
-        roomNoiseGenerator.AddNoiseToRoom(room, roomDimensions, roomOrigin);
+        roomNoiseGenerator.AddNoiseToRoom(room.chunks, roomDimensions, roomOrigin);
 
         // Add to list of rooms
-        roomsWithSize.Add(room, roomDimensions);
+        allRooms.Add(room);
     }
 
     private void ClearChunk(Chunk chunk)
     {
         world.EditChunk(clearRoomCompute, chunk);
+    }
+    private void SetRoomMinMax(ref Room room, Chunk startingChunk)
+    {
+        float boundsSize = world.worldSettings.boundsSize;
+
+        room.min = startingChunk.GetOrigin(boundsSize);
+
+        room.max = room.min + new Vector3(
+            room.dimensions.x * boundsSize,
+            room.dimensions.y * boundsSize,
+            room.dimensions.z * boundsSize
+        );
+    }
+    public static bool IsWithinBounds(Vector3 p, Vector3 min, Vector3 max)
+    {
+        return p.x >= min.x && p.x < max.x &&
+               p.y >= min.y && p.y < max.y &&
+               p.z >= min.z && p.z < max.z;
+    }
+
+    private int GetRoomAtPos(Vector3 pos)
+    {
+        for (int i = 0; i < allRooms.Count; i++)
+        {
+            if (IsWithinBounds(pos, allRooms[i].min, allRooms[i].max))
+            {
+                return i;
+            }
+        }
+
+        return -1; // No room
+    }
+
+    Vector3Int WorldToChunkCoord(Vector3 pos)
+    {
+        float s = world.worldSettings.boundsSize;
+
+        int x = Mathf.FloorToInt((pos.x + s * 0.5f) / s);
+        int y = Mathf.FloorToInt((pos.y + s * 0.5f) / s);
+        int z = Mathf.FloorToInt((pos.z + s * 0.5f) / s);
+
+        return new Vector3Int(x, y, z);
     }
 
     private Vector3 GetRandomWorldPos()
