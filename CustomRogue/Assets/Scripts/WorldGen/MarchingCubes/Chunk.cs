@@ -9,16 +9,16 @@ public enum PointMaterial
     Grass,
 }
 
+[StructLayout(LayoutKind.Sequential)]
+public struct Point
+{
+    public Vector3 position;
+    public float density;
+    public int material;
+}
+
 public class Chunk : MonoBehaviour
 {
-    [StructLayout(LayoutKind.Sequential)]
-    struct Point
-    {
-        public Vector3 position;
-        public float density;
-        public int material;
-    }
-
     // Mesh
     MeshFilter meshFilter;
     MeshRenderer meshRenderer;
@@ -30,6 +30,8 @@ public class Chunk : MonoBehaviour
     int numPoints;
 
     Vector3Int coords;
+
+    bool colliderUpdated = false;
 
     //[Header("Regen")]
     //static ComputeShader regenComputeShader;
@@ -93,6 +95,8 @@ public class Chunk : MonoBehaviour
 
         //regenComputeShader.SetBuffer(0, "points", pointsBuffer);
         //regenComputeShader.SetBuffer(0, "originalPoints", originalPointsBuffer);
+
+        gameObject.SetActive(false);
     }
 
     public void SetOriginalPoints()
@@ -126,9 +130,18 @@ public class Chunk : MonoBehaviour
         return new Vector3(coords.x, coords.y, coords.z) * boundsSize;
     }
 
+    public void ColliderChanged()
+    {
+        colliderUpdated = false;
+    }
+    public bool IsColliderUpdated()
+    {
+        return colliderUpdated;
+    }
     public void SetCollider()
     {
         meshCollider.sharedMesh = meshFilter.sharedMesh;
+        colliderUpdated = true;
     }
 
     // Regen

@@ -14,6 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gunName: Test
   ammoType: 0
-  ammoPerShot: 10
+  ammoPerShot: 1
   bulletPrefab: {fileID: 753195229725817605, guid: 16d6cd47d09aa0f41a1e115d9d07f2dc, type: 3}
   shootConfig: {fileID: 11400000, guid: b6536422305304348b18e2386873be28, type: 2}

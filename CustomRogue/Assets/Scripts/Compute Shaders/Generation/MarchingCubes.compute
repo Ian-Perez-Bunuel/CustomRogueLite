@@ -31,7 +31,7 @@ int indexFromCoord(int x, int y, int z)
     return z * numPointsPerAxis * numPointsPerAxis + y * numPointsPerAxis + x;
 }
 
-[numthreads(numThreads, numThreads, numThreads)] // Meaning sizes can only be times 10
+[numthreads(numThreads, numThreads, numThreads)] 
 void March(uint3 id : SV_DispatchThreadID)
 {
     // Stop one point before the end because voxel includes neighbouring points

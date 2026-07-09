@@ -1,7 +1,4 @@
-using System.Drawing;
-using System.Runtime.InteropServices;
 using UnityEngine;
-using static UnityEditor.PlayerSettings;
 
 public class ChunkBuilder : MonoBehaviour
 {
@@ -35,7 +32,7 @@ public class ChunkBuilder : MonoBehaviour
     {
         // Get the points
         int numPoints = chunk.GetNumberOfPoints();
-        Vector4[] points = new Vector4[numPoints];
+        Point[] points = new Point[numPoints];
         chunk.pointsBuffer.GetData(points);
 
         // Check points within each object
@@ -49,13 +46,13 @@ public class ChunkBuilder : MonoBehaviour
                 // Check all points
                 for (int i = 0; i < points.Length; i++)
                 {
-                    Vector3 pos = new Vector3(points[i].x, points[i].y, points[i].z);
+                    Vector3 pos = points[i].position;
                     Vector3 closestPoint = col.ClosestPoint(pos);
                     float dist = Vector3.Distance(closestPoint, pos);
 
                     bool insideCol = dist < 0.000001f;
 
-                    float newValue = points[i].w;
+                    float newValue = points[i].density;
 
                     // Check if point is inside object
                     if (insideCol)
@@ -70,7 +67,7 @@ public class ChunkBuilder : MonoBehaviour
                     }
 
                     // Only change if the value is greater than the current
-                    points[i].w = Mathf.Max(points[i].w, newValue);
+                    points[i].density = Mathf.Max(points[i].density, newValue);
                 }
             }
             else
@@ -88,15 +85,15 @@ public class ChunkBuilder : MonoBehaviour
     public void DistortChunk()
     {
         int numPoints = chunk.GetNumberOfPoints();
-        Vector4[] points = new Vector4[numPoints];
+        Point[] points = new Point[numPoints];
         chunk.pointsBuffer.GetData(points);
 
         for (int i = 0; i < points.Length; i++)
         {
-            Vector3 pos = new Vector3(points[i].x, points[i].y, points[i].z);
+            Vector3 pos = points[i].position;
 
             // Only distort near the surface
-            if (points[i].w > 0.1f && points[i].w < 0.8f && !IsEdgePoint(i))
+            if (points[i].density > 0.1f && points[i].density < 0.8f && !IsEdgePoint(i))
             {
                 float noise =
                 Mathf.PerlinNoise(pos.x * distortionScale, pos.y * distortionScale) +
@@ -104,7 +101,7 @@ public class ChunkBuilder : MonoBehaviour
                 Mathf.PerlinNoise(pos.x * distortionScale, pos.z * distortionScale);
 
                 noise = noise / 3f * 2f - 1f;
-                points[i].w += noise * distortionAmount;
+                points[i].density += noise * distortionAmount;
             }
         }
 
@@ -112,7 +109,7 @@ public class ChunkBuilder : MonoBehaviour
         chunk.HasChanged();
     }
 
-    void SetToNearestPoint(Transform objTransform, Vector4[] points)
+    void SetToNearestPoint(Transform objTransform, Point[] points)
     {
         float nearestDistSqr = float.MaxValue;
         Vector3 nearestPoint = objTransform.position;
@@ -120,7 +117,7 @@ public class ChunkBuilder : MonoBehaviour
         // Find nearest point
         for (int i = 0; i < points.Length; i++)
         {
-            Vector3 pointPos = new Vector3(points[i].x, points[i].y, points[i].z);
+            Vector3 pointPos = points[i].position;
             float distSqr = (objTransform.position - pointPos).sqrMagnitude;
 
             if (distSqr < nearestDistSqr)
@@ -153,5 +150,64 @@ public class ChunkBuilder : MonoBehaviour
                x == worldSettings.numPointsPerAxis - 1 ||
                y == worldSettings.numPointsPerAxis - 1 ||
                z == worldSettings.numPointsPerAxis - 1;
+    }
+
+    public void SaveAsScriptableObject()
+    {
+        DestructableSO newSO = ScriptableObject.CreateInstance<DestructableSO>();
+        int numPoints = chunk.GetNumberOfPoints();
+        Point[] points = new Point[numPoints];
+        chunk.pointsBuffer.GetData(points); // Set point data
+
+        // Get center position of object
+        float lowestYPos = 99999f;
+        float objectRadius = 0f;
+        Vector3 totalPosition = Vector3.zero;
+        int pointCount = 0;
+
+        // Loop through all points to get lowestYPos, totalPos, objectRadius and pointCount;
+        for (int i = 0; i < points.Length; i++)
+        {
+            if (points[i].density >= 0.9f)
+            {
+                // Total Pos
+                totalPosition += points[i].position;
+                pointCount++;
+
+                // Lowest Point
+                if (points[i].position.y < lowestYPos)
+                {
+                    lowestYPos = points[i].position.y;
+                }
+            }
+        }
+
+        Vector3 centerPos = Vector3.zero;
+        if (pointCount > 0)
+            centerPos = totalPosition / pointCount;
+
+        // Object radius / farthest distance
+        for (int i = 0; i < points.Length; i++)
+        {
+            if (points[i].density > 0f)
+            {
+                float dist = Vector3.Distance(centerPos, points[i].position);
+
+                if (dist > objectRadius)
+                {
+                    objectRadius = dist;
+                }
+            }
+        }
+
+        // Spawn position
+        Vector3 spawnPos = new Vector3(centerPos.x, lowestYPos, centerPos.z);
+
+        // Set destructable data
+        newSO.points = points;
+        newSO.localSpawnPos = spawnPos;
+        newSO.radius = objectRadius;
+
+        // Save to a folder
     }
 }

@@ -1221,6 +1221,8 @@ MonoBehaviour:
   materials:
   - {fileID: 2100000, guid: 28d182add7633af4da48475503ef4627, type: 2}
   worldSettings: {fileID: 11400000, guid: 2c14bb3260bf8584a81baddf27dd4fe5, type: 2}
+  renderCoordDistance: 2
+  playerTransform: {fileID: 157756203}
 --- !u!4 &512976028
 Transform:
   m_ObjectHideFlags: 0

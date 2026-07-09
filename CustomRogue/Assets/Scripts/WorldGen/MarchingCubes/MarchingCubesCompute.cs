@@ -1,19 +1,25 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Unity.Collections;
+using Unity.Profiling;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class MarchingCubesCompute : MonoBehaviour
 {
+    static readonly ProfilerMarker s_PreparePerfMarker = new ProfilerMarker("RebuildMesh Marker");
+
     [StructLayout(LayoutKind.Sequential)]
-    struct Triangle
+    public struct Triangle
     {
 #pragma warning disable 649 // disable unassigned variable warning
         public Vector3 a;
         public Vector3 b;
         public Vector3 c;
-
         public int material;
+
+        public const int SizeInBytes = sizeof(float) * 3 * 3 + sizeof(int);
 
         // Allows indexing
         public Vector3 this[int i]
@@ -36,6 +42,8 @@ public class MarchingCubesCompute : MonoBehaviour
     [Header("Compute Shader")]
     public ComputeShader computeShader;
     [SerializeField] ComputeShader regenComputeShader;
+    public ComputeBuffer triangleBuffer;
+    public ComputeBuffer triCountBuffer;
 
     [Header("Generation Data")]
     public DensityGenerator densityGenerator;
@@ -43,7 +51,9 @@ public class MarchingCubesCompute : MonoBehaviour
     public Vector3 worldDimensions;
     [SerializeField] GameObject chunkHolder;
     List<Chunk> chunks;
+
     public static Queue<Chunk> dirtyChunks;
+    public static Queue<Chunk> dirtyChunkColliders;
 
     [Header("Voxel Settings")]
     public Material[] materials;
@@ -51,9 +61,15 @@ public class MarchingCubesCompute : MonoBehaviour
 
     // Buffers
     int kernel;
-    ComputeBuffer triangleBuffer;
-    ComputeBuffer triCountBuffer;
-    public static int numThreadsPerAxis;
+    [HideInInspector] public static int numThreadsPerAxis;
+
+    [Header("Optimization")]
+    public int renderCoordDistance = 3;
+    [SerializeField] Transform playerTransform;
+    HashSet<Chunk> activeChunks;
+    Vector3Int playerChunkCoord;
+    Vector3Int previousPlayerChunkCoord;
+    bool rebuildInProgress = false;
 
     public float GetSurfaceLevel()
     {
@@ -80,14 +96,22 @@ public class MarchingCubesCompute : MonoBehaviour
         kernel = computeShader.FindKernel("March");
 
         chunks = new List<Chunk>();
+        activeChunks = new HashSet<Chunk>();
         dirtyChunks = new Queue<Chunk>();
+        dirtyChunkColliders = new Queue<Chunk>();
 
         // Chunk.SetRegenCompute(regenComputeShader);
 
         int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
         numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 4f);
+        int numVoxels = numVoxelsPerAxis * numVoxelsPerAxis * numVoxelsPerAxis;
+        int maxTriangleCount = numVoxels * 5;
+        triangleBuffer = new ComputeBuffer(maxTriangleCount, sizeof(float) * 3 * 3 + sizeof(int), ComputeBufferType.Append);
+        triCountBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
 
         UpdateWorld();
+        previousPlayerChunkCoord = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
+        SetChunksAroundPlayer();
     }
 
     public Vector3 CentreFromCoord(Vector3Int coord)
@@ -106,6 +130,111 @@ public class MarchingCubesCompute : MonoBehaviour
         computeShader.Dispatch(kernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
     }
 
+    public void RebuildMeshAsync(Chunk chunk)
+    {
+        rebuildInProgress = true;
+        DispatchComputeShader(chunk);
+
+        ComputeBuffer.CopyCount(triangleBuffer, triCountBuffer, 0);
+
+        s_PreparePerfMarker.Begin();
+
+        AsyncGPUReadback.Request(triCountBuffer, request =>
+        {
+            if (request.hasError)
+            {
+                rebuildInProgress = false;
+                Debug.LogError("GPU readback error on triangle count");
+                return;
+            }
+
+            int numTris = request.GetData<int>()[0];
+            // Check for no triangles
+            if (numTris <= 0)
+            {
+                BuildEmptyMesh(chunk);
+                rebuildInProgress = false;
+                return;
+            }
+
+            AsyncGPUReadback.Request(triangleBuffer, numTris * Triangle.SizeInBytes, 0, triRequest =>
+            {
+                rebuildInProgress = false;
+
+                if (triRequest.hasError)
+                {
+                    Debug.LogError("GPU readback error on triangles");
+                    return;
+                }
+
+                var tris = triRequest.GetData<Triangle>();
+
+                BuildMeshFromTriangles(chunk, tris, numTris);
+            });
+        });
+
+        s_PreparePerfMarker.End();
+    }
+
+    private void BuildMeshFromTriangles(Chunk chunk, NativeArray<Triangle> tris, int numTris)
+    {
+        Vector3[] meshVertices = ArrayPool<Vector3>.Shared.Rent(numTris * 3);
+
+        chunk.ClearTris();
+
+        for (int i = 0; i < numTris; i++)
+        {
+            int matIndex = Mathf.Clamp(tris[i].material, 0, materials.Length - 1);
+
+            for (int j = 0; j < 3; j++)
+            {
+                int vertIndex = i * 3 + j;
+                meshVertices[vertIndex] = tris[i][j];
+                chunk.AddVertexIndexTo(matIndex, vertIndex);
+            }
+        }
+
+        Mesh mesh = chunk.GetMesh();
+        mesh.Clear(false);
+
+        mesh.SetVertices(meshVertices, 0, numTris * 3);
+        mesh.subMeshCount = materials.Length;
+
+        for (int m = 0; m < materials.Length; m++)
+        {
+            mesh.SetTriangles(chunk.GetTris(m), m);
+        }
+
+        ArrayPool<Vector3>.Shared.Return(meshVertices);
+
+        mesh.RecalculateNormals();
+        chunk.ColliderChanged();
+        if (!dirtyChunkColliders.Contains(chunk))
+        {
+            dirtyChunkColliders.Enqueue(chunk);
+        }
+    }
+
+    private void BuildEmptyMesh(Chunk chunk)
+    {
+        chunk.ClearTris();
+
+        Mesh mesh = chunk.GetMesh();
+        mesh.Clear(false);
+        mesh.subMeshCount = materials.Length;
+
+        for (int m = 0; m < materials.Length; m++)
+        {
+            mesh.SetTriangles(chunk.GetTris(m), m);
+        }
+
+        chunk.ColliderChanged();
+        if (!dirtyChunkColliders.Contains(chunk))
+        {
+            dirtyChunkColliders.Enqueue(chunk);
+        }
+    }
+
     // Builds the mesh without re-generating it's noise. Instead goes off of it's current point values
     public void RebuildMesh(Chunk chunk)
     {
@@ -120,6 +249,7 @@ public class MarchingCubesCompute : MonoBehaviour
         // Get triangle data from shader
         Triangle[] tris = ArrayPool<Triangle>.Shared.Rent(numTris);
         Vector3[] meshVertices = ArrayPool<Vector3>.Shared.Rent(numTris * 3);
+
         triangleBuffer.GetData(tris, 0, 0, numTris);
 
         // One triangle index list per material
@@ -138,9 +268,11 @@ public class MarchingCubesCompute : MonoBehaviour
             }
         }
 
+
         Mesh mesh = chunk.GetMesh();
         mesh.Clear(false);
 
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         mesh.SetVertices(meshVertices, 0, numTris * 3);
         mesh.subMeshCount = materials.Length;
 
@@ -153,7 +285,11 @@ public class MarchingCubesCompute : MonoBehaviour
         ArrayPool<Vector3>.Shared.Return(meshVertices);
 
         mesh.RecalculateNormals();
-        chunk.SetCollider();
+        chunk.ColliderChanged();
+        if (!dirtyChunkColliders.Contains(chunk))
+        {
+            dirtyChunkColliders.Enqueue(chunk);
+        }
     }
 
     void GenerateMesh(Chunk chunk)
@@ -211,25 +347,6 @@ public class MarchingCubesCompute : MonoBehaviour
         int numPoints = worldSettings.numPointsPerAxis * worldSettings.numPointsPerAxis * worldSettings.numPointsPerAxis;
         int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
         int numVoxels = numVoxelsPerAxis * numVoxelsPerAxis * numVoxelsPerAxis;
-        int maxTriangleCount = numVoxels * 5;
-
-        triangleBuffer = new ComputeBuffer(maxTriangleCount, sizeof(float) * 3 * 3 + sizeof(int), ComputeBufferType.Append);
-        triCountBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
-    }
-
-    void ReleaseBuffers()
-    {
-        if (triangleBuffer != null)
-        {
-            triangleBuffer.Release();
-            triangleBuffer = null;
-        }
-
-        if (triCountBuffer != null)
-        {
-            triCountBuffer.Release();
-            triCountBuffer = null;
-        }
     }
 
     Vector3Int WorldToChunkCoord(Vector3 pos)
@@ -294,11 +411,73 @@ public class MarchingCubesCompute : MonoBehaviour
 
     private void FixedUpdate()
     {
-        while (dirtyChunks.Count > 0)
+        // Optimization
+        playerChunkCoord = WorldToChunkCoord(playerTransform.position);
+
+        if (playerChunkCoord != previousPlayerChunkCoord)
+        {
+            SetChunksAroundPlayer();
+        }
+
+        // Update Meshs
+        while (!rebuildInProgress && dirtyChunks.Count > 0)
         {
             Chunk chunk = dirtyChunks.Dequeue();
-            RebuildMesh(chunk);
+            RebuildMeshAsync(chunk);
         }
+        // Update colliders (1 per frame to reduce lag)
+        if (dirtyChunkColliders.Count > 0)
+        {
+            Chunk chunk = dirtyChunkColliders.Dequeue();
+
+            if (!chunk.IsColliderUpdated())
+            {
+                chunk.SetCollider();
+            }
+        }
+    }
+
+    void SetChunksAroundPlayer()
+    {
+        HashSet<Chunk> newActiveChunks = new HashSet<Chunk>();
+
+        // Get chunk player is in
+        for (int x = -renderCoordDistance; x <= renderCoordDistance; x++)
+        {
+            for (int y = -renderCoordDistance; y <= renderCoordDistance; y++)
+            {
+                for (int z = -renderCoordDistance; z <= renderCoordDistance; z++)
+                {
+                    // Not within the sphere render distance so continue
+                    if (x * x + y * y + z * z > renderCoordDistance * renderCoordDistance)
+                        continue;
+
+                    Vector3Int currentChunkCoord = new Vector3Int(playerChunkCoord.x + x, playerChunkCoord.y + y, playerChunkCoord.z + z);
+                    Chunk chunk = GetChunkFromCoord(currentChunkCoord);
+
+                    if (chunk != null)
+                    {
+                        newActiveChunks.Add(chunk);
+
+                        if (!activeChunks.Contains(chunk))
+                        {
+                            chunk.gameObject.SetActive(true);
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach (Chunk chunk in activeChunks)
+        {
+            if (!newActiveChunks.Contains(chunk))
+            {
+                chunk.gameObject.SetActive(false);
+            }
+        }
+
+        activeChunks = newActiveChunks;
+        previousPlayerChunkCoord = playerChunkCoord;
     }
 
     public Vector3 GetChunkDimensions()
@@ -344,6 +523,10 @@ public class MarchingCubesCompute : MonoBehaviour
         int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
         int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
 
+        computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
+        // Ammo Buffer
+        computeEditting.SetBuffer(0, "ammos", GunManager.ammoBuffer);
+
         // Loop through all potentially affected chunks
         for (int x = minCoord.x; x <= maxCoord.x; x++)
         {
@@ -355,21 +538,15 @@ public class MarchingCubesCompute : MonoBehaviour
                     if (chunk == null)
                         continue;
 
-                    // This uses world-space positions stored in the buffer,
-                    // so we can pass the same worldPos & radius to every chunk.
                     computeEditting.SetBuffer(0, "points", chunk.pointsBuffer);
-                    computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
-
-                    // Ammo Buffer
-                    computeEditting.SetBuffer(0, "ammos", GunManager.ammoBuffer);
 
                     computeEditting.Dispatch(0, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
 
-                    GunManager.UpdateAmmoCPU();
                     chunk.HasChanged();
                 }
             }
         }
+        GunManager.UpdateAmmoCPU();
     }
 
     public void EditChunk(ComputeShader computeEditting, Chunk chunk)
@@ -414,6 +591,9 @@ public class MarchingCubesCompute : MonoBehaviour
         int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
         int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
 
+        // Set compute editting values
+        computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
+
         // Loop through all potentially affected chunks
         for (int x = minCoord.x; x <= maxCoord.x; x++)
         {
@@ -426,12 +606,6 @@ public class MarchingCubesCompute : MonoBehaviour
                         continue;
 
                     computeEditting.SetBuffer(0, "points", chunk.pointsBuffer);
-                    computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
-
-                    computeEditting.SetVector("cylinderStart", cylinderStart);
-                    computeEditting.SetVector("cylinderEnd", cylinderEnd);
-                    computeEditting.SetFloat("startRadius", startRadius);
-                    computeEditting.SetFloat("endRadius", endRadius);
 
                     computeEditting.Dispatch(kernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
 
@@ -449,13 +623,28 @@ public class MarchingCubesCompute : MonoBehaviour
         }
     }
 
-    void OnDestroy()
+    void ReleaseBuffers()
     {
-        ReleaseBuffers();
+        if (triangleBuffer != null)
+        {
+            triangleBuffer.Release();
+            triangleBuffer = null;
+        }
+
+        if (triCountBuffer != null)
+        {
+            triCountBuffer.Release();
+            triCountBuffer = null;
+        }
 
         foreach (Chunk chunk in chunks)
         {
             chunk.ReleaseBuffers();
         }
+    }
+
+    void OnDestroy()
+    {
+        ReleaseBuffers();
     }
 }

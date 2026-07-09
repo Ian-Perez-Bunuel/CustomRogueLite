@@ -5,27 +5,6 @@ using UnityEngine;
 
 public class RoomManager : MonoBehaviour
 {
-    public struct Room
-    {
-        public List<Chunk> chunks;
-        public Vector3Int dimensions;
-        public Vector3 min;
-        public Vector3 max;
-
-        public Room(Vector3Int d)
-        {
-            dimensions = d;
-            chunks = new List<Chunk>();
-            min = Vector3.zero;
-            max = Vector3.zero;
-        }
-
-        public void AddChunk(Chunk chunk)
-        {
-            chunks.Add(chunk);
-        }
-    }
-
     [SerializeField] ComputeShader clearRoomCompute;
     [SerializeField] MarchingCubesCompute world;
     [SerializeField] BaseRoomGenerator roomNoiseGenerator;
@@ -82,13 +61,13 @@ public class RoomManager : MonoBehaviour
         // Starting chunk is the min chunk
         Vector3 startingChunkPos = GetRandomWorldPos();
         Chunk startingChunk = world.GetChunkFromWorldPos(startingChunkPos);
-        SetRoomMinMax(ref room, startingChunk);
 
         if (startingChunk == null)
         {
             Debug.LogError("CHUNK NOT FOUND: The start chunk isn't within the world");
             return;
         }
+        SetRoomMinMax(ref room, startingChunk);
 
         // End chunk is the max chunk
         Vector3 endChunkPos = new Vector3(
@@ -197,7 +176,6 @@ public class RoomManager : MonoBehaviour
 
         return new Vector3Int(x, y, z);
     }
-
     private Vector3 GetRandomWorldPos()
     {
         Vector3 worldMin;
