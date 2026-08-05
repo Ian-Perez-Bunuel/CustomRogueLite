@@ -1,7 +1,10 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public enum PointMaterial
 {
@@ -9,40 +12,122 @@ public enum PointMaterial
     Grass,
 }
 
+[StructLayout(LayoutKind.Sequential)]
+public struct Point
+{
+    public float3 position;
+    public float density;
+    public int material;
+}
+
 public class Chunk : MonoBehaviour
 {
-    [StructLayout(LayoutKind.Sequential)]
-    struct Point
-    {
-        public Vector3 position;
-        public float density;
-        public int material;
-    }
-
     // Mesh
     MeshFilter meshFilter;
     MeshRenderer meshRenderer;
     MeshCollider meshCollider;
     List<int>[] submeshTriangles;
 
-    public ComputeBuffer originalPointsBuffer = null;
-    public ComputeBuffer pointsBuffer;
-    int numPoints;
-
     Vector3Int coords;
 
-    //[Header("Regen")]
-    //static ComputeShader regenComputeShader;
-    //static float regenAmount = 0.01f;
-    //public int timeTillRegen = 2; // Seconds
-    //public float regenSpeed = 0.5f; // Time between regen changes
+    NativeArray<Point> points;
+    int numPoints;
 
-    //public static void SetRegenCompute(ComputeShader shader)
-    //{
-    //    regenComputeShader = shader;
-    //    regenComputeShader.SetFloat("regenAmount", regenAmount);
-    //}
+    [Header("Job Handling")]
+    // Tracks the most recent job using this chunk's points.
+    private JobHandle pointDependency;
+    // Stops the same chunk being placed into the dirty queue repeatedly.
+    private bool queuedForRebuild;
 
+    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    public void Setup(Material[] t_mats, int t_numPointsPerAxis)
+    {
+        SetOrCreateComponents();
+
+        meshRenderer.sharedMaterials = t_mats;
+
+        SetSubmeshAmount(t_mats.Length);
+
+        AllocatePointData(t_numPointsPerAxis);
+
+        CreateMeshIfRequired();
+    }
+
+    void SetOrCreateComponents()
+    {
+        if (GetComponent<MeshFilter>() == null)
+        {
+            meshFilter = gameObject.AddComponent<MeshFilter>();
+        }
+        if (GetComponent<MeshCollider>() == null)
+        {
+            meshCollider = gameObject.AddComponent<MeshCollider>();
+        }
+        if (GetComponent<MeshRenderer>() == null)
+        {
+            meshRenderer = gameObject.AddComponent<MeshRenderer>();
+        }
+    }
+
+    private void CreateMeshIfRequired()
+    {
+        if (meshFilter.sharedMesh != null)
+            return;
+
+        Mesh mesh = new Mesh
+        {
+            name = $"Marching Cubes: " + gameObject.name,
+            indexFormat = IndexFormat.UInt32
+        };
+
+        // Since the mesh will be editted
+        mesh.MarkDynamic();
+
+        meshFilter.sharedMesh = mesh;
+        meshCollider.sharedMesh = mesh;
+    }
+
+    private void AllocatePointData(int numPointsPerAxis)
+    {
+        CompletePointJobs();
+        DisposePointData();
+
+        numPoints =
+            numPointsPerAxis *
+            numPointsPerAxis *
+            numPointsPerAxis;
+
+        points = new NativeArray<Point>(
+            numPoints,
+            Allocator.Persistent,
+            NativeArrayOptions.UninitializedMemory);
+    }
+
+    #region Point-data Job Handling
+    public int GetNumberOfPoints() { return numPoints; }
+
+    public void SetPointDependency(JobHandle handle)
+    {
+        pointDependency = handle;
+    }
+
+    public JobHandle GetPointDependency()
+    {
+        return pointDependency;
+    }
+    public void CompletePointJobs()
+    {
+        pointDependency.Complete();
+        pointDependency = default;
+    }
+
+    public NativeArray<Point> GetPoints()
+    {
+        return points;
+    }
+    #endregion
+
+    #region Submeshes
     public void SetSubmeshAmount(int amount)
     {
         submeshTriangles = new List<int>[amount];
@@ -67,53 +152,32 @@ public class Chunk : MonoBehaviour
             submeshTriangles[i].Clear();
         }
     }
+    #endregion
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    public void Setup(Material[] mats, int t_numPointsPerAxis)
-    {
-        if (GetComponent<MeshFilter>() == null)
-        {
-            meshFilter = gameObject.AddComponent<MeshFilter>();
-        }
-        if (GetComponent<MeshCollider>() == null)
-        {
-            meshCollider = gameObject.AddComponent<MeshCollider>();
-        }
-        if (GetComponent<MeshRenderer>() == null)
-        {
-            meshRenderer = gameObject.AddComponent<MeshRenderer>();
-        }
-
-        meshRenderer.sharedMaterials = mats;
-
-        // Buffer
-        numPoints = t_numPointsPerAxis * t_numPointsPerAxis * t_numPointsPerAxis;
-        pointsBuffer = new ComputeBuffer(numPoints, sizeof(float) * 4 + sizeof(int)); // float3 + float + int
-        originalPointsBuffer = new ComputeBuffer(numPoints, sizeof(float) * 4 + sizeof(int)); // float3 + float + int
-
-        //regenComputeShader.SetBuffer(0, "points", pointsBuffer);
-        //regenComputeShader.SetBuffer(0, "originalPoints", originalPointsBuffer);
-    }
-
-    public void SetOriginalPoints()
-    {
-        if (originalPointsBuffer == null)
-            originalPointsBuffer = pointsBuffer;
-    }
-
-    public int GetNumberOfPoints() { return numPoints; }
-
+    #region Coordinates
     public void SetCoords(Vector3Int c)
     {
         coords = c;
     }
-    public Vector3Int GetCoords()
-    { return coords; }
 
+    public Vector3Int GetCoords()
+    { 
+        return coords; 
+    }
+
+    public Vector3 GetOrigin(float boundsSize)
+    {
+        return new Vector3(coords.x, coords.y, coords.z) * boundsSize;
+    }
+    #endregion
+
+    #region Mesh
     public void SetMesh(Mesh mesh)
     {
         meshFilter.sharedMesh = mesh;
-        meshCollider.sharedMesh = meshFilter.sharedMesh;
+
+        meshCollider.sharedMesh = null;
+        meshCollider.sharedMesh = mesh;
     }
 
     public Mesh GetMesh()
@@ -121,50 +185,48 @@ public class Chunk : MonoBehaviour
         return meshFilter.sharedMesh;
     }
 
-    public Vector3 GetOrigin(float boundsSize)
-    {
-        return new Vector3(coords.x, coords.y, coords.z) * boundsSize;
-    }
-
     public void SetCollider()
     {
+        // Assigning null first forces Unity to refresh the collider.
+        meshCollider.sharedMesh = null;
         meshCollider.sharedMesh = meshFilter.sharedMesh;
     }
+    #endregion
 
-    // Regen
+    #region Dirty State
     public void HasChanged()
     {
+        if (queuedForRebuild)
+            return;
+
+        queuedForRebuild = true;
+
         MarchingCubesCompute.dirtyChunks.Enqueue(this);
-        //StopCoroutine(RegenTimer()); // Reset timer
-
-        //StartCoroutine(RegenTimer());
     }
-    //IEnumerator RegenTimer()
-    //{
-    //    yield return new WaitForSeconds(timeTillRegen);
 
-    //    StartCoroutine(Regenerate());
-    //}
-    //IEnumerator Regenerate()
-    //{
-    //    yield return new WaitForSeconds(regenSpeed);
+    public void MarkRebuilt()
+    {
+        queuedForRebuild = false;
+    }
 
-    //    regenComputeShader.Dispatch(0, MarchingCubesCompute.numThreadsPerAxis, MarchingCubesCompute.numThreadsPerAxis, MarchingCubesCompute.numThreadsPerAxis);
-    //    MarchingCubesCompute.dirtyChunks.Enqueue(this);
-    //}
+    #endregion
 
+    #region Cleanup
     public void ReleaseBuffers()
     {
-        if (pointsBuffer != null)
-        {
-            pointsBuffer.Release();
-            pointsBuffer = null;
-        }
-
-        if (originalPointsBuffer != null)
-        {
-            originalPointsBuffer.Release();
-            originalPointsBuffer = null;
-        }
+        CompletePointJobs();
+        DisposePointData();
     }
+
+    private void DisposePointData()
+    {
+        if (points.IsCreated)
+            points.Dispose();
+    }
+
+    private void OnDestroy()
+    {
+        ReleaseBuffers();
+    }
+    #endregion
 }

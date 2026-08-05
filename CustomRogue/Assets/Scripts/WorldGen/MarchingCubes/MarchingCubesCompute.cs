@@ -1,38 +1,12 @@
-using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 
 public class MarchingCubesCompute : MonoBehaviour
 {
-    [StructLayout(LayoutKind.Sequential)]
-    struct Triangle
-    {
-#pragma warning disable 649 // disable unassigned variable warning
-        public Vector3 a;
-        public Vector3 b;
-        public Vector3 c;
-
-        public int material;
-
-        // Allows indexing
-        public Vector3 this[int i]
-        {
-            get
-            {
-                switch (i)
-                {
-                    case 0:
-                        return a;
-                    case 1:
-                        return b;
-                    default:
-                        return c;
-                }
-            }
-        }
-    }
-
     [Header("Compute Shader")]
     public ComputeShader computeShader;
     [SerializeField] ComputeShader regenComputeShader;
@@ -49,11 +23,14 @@ public class MarchingCubesCompute : MonoBehaviour
     public Material[] materials;
     public WorldSettings worldSettings;
 
-    // Buffers
-    int kernel;
-    ComputeBuffer triangleBuffer;
-    ComputeBuffer triCountBuffer;
     public static int numThreadsPerAxis;
+
+    private const int MaxTrianglesPerCube = 5;
+    private const int MarchBatchSize = 32;
+
+    private NativeArray<int> triTableNative;
+    private NativeArray<int> cornerAFromEdgeNative;
+    private NativeArray<int> cornerBFromEdgeNative;
 
     public float GetSurfaceLevel()
     {
@@ -73,20 +50,15 @@ public class MarchingCubesCompute : MonoBehaviour
         return (worldDimensions - Vector3.one) * worldSettings.boundsSize * 0.5f;
     }
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private void Awake()
     {
-        CreateBuffers();
-        kernel = computeShader.FindKernel("March");
-
         chunks = new List<Chunk>();
         dirtyChunks = new Queue<Chunk>();
 
-        // Chunk.SetRegenCompute(regenComputeShader);
-
-        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
-        numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 4f);
-
+        CreateLookupTables();
+    }
+    private void Start()
+    {
         UpdateWorld();
     }
 
@@ -95,141 +67,244 @@ public class MarchingCubesCompute : MonoBehaviour
         return new Vector3(coord.x, coord.y, coord.z) * worldSettings.boundsSize;
     }
 
-    void DispatchComputeShader(Chunk chunk)
-    {
-        triangleBuffer.SetCounterValue(0);
-        computeShader.SetBuffer(kernel, "points", chunk.pointsBuffer);
-        computeShader.SetBuffer(kernel, "triangles", triangleBuffer);
-        computeShader.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
-        computeShader.SetFloat("surfaceLevel", worldSettings.surfaceLevel);
-
-        computeShader.Dispatch(kernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
-    }
 
     // Builds the mesh without re-generating it's noise. Instead goes off of it's current point values
     public void RebuildMesh(Chunk chunk)
     {
-        DispatchComputeShader(chunk);
+        if (chunk == null)
+            return;
 
-        // Get number of triangles in the triangle buffer
-        ComputeBuffer.CopyCount(triangleBuffer, triCountBuffer, 0);
-        int[] triCountArray = { 0 };
-        triCountBuffer.GetData(triCountArray);
-        int numTris = triCountArray[0];
+        NativeArray<Point> points = chunk.GetPoints();
 
-        // Get triangle data from shader
-        Triangle[] tris = ArrayPool<Triangle>.Shared.Rent(numTris);
-        Vector3[] meshVertices = ArrayPool<Vector3>.Shared.Rent(numTris * 3);
-        triangleBuffer.GetData(tris, 0, 0, numTris);
+        if (!points.IsCreated)
+        {
+            Debug.LogError(
+                $"Cannot rebuild {chunk.name}: its point NativeArray is not created.",
+                chunk);
 
-        // One triangle index list per material
+            chunk.MarkRebuilt();
+            return;
+        }
+
+        int pointsPerAxis = worldSettings.numPointsPerAxis;
+        int cubesPerAxis = pointsPerAxis - 1;
+
+        if (cubesPerAxis <= 0)
+        {
+            Debug.LogError(
+                "numPointsPerAxis must be at least 2.",
+                this);
+
+            chunk.MarkRebuilt();
+            return;
+        }
+
+        int expectedPointCount =
+            pointsPerAxis *
+            pointsPerAxis *
+            pointsPerAxis;
+
+        if (points.Length != expectedPointCount)
+        {
+            Debug.LogError(
+                $"Chunk {chunk.name} has {points.Length} points, " +
+                $"but {expectedPointCount} were expected.",
+                chunk);
+
+            chunk.MarkRebuilt();
+            return;
+        }
+
+        int cubeCount =
+            cubesPerAxis *
+            cubesPerAxis *
+            cubesPerAxis;
+
+        NativeArray<Triangle> jobTriangleBuffer =
+            new NativeArray<Triangle>(
+                cubeCount * MaxTrianglesPerCube,
+                Allocator.TempJob,
+                NativeArrayOptions.UninitializedMemory);
+
+        NativeArray<byte> triangleCounts =
+            new NativeArray<byte>(
+                cubeCount,
+                Allocator.TempJob,
+                NativeArrayOptions.ClearMemory);
+
+        try
+        {
+            MarchingCubesJob marchJob = new MarchingCubesJob
+            {
+                points = points,
+
+                triTable = triTableNative,
+                cornerIndexAFromEdge = cornerAFromEdgeNative,
+                cornerIndexBFromEdge = cornerBFromEdgeNative,
+
+                triangleBuffer = jobTriangleBuffer,
+                triangleCounts = triangleCounts,
+
+                numPointsPerAxis = pointsPerAxis,
+                surfaceLevel = worldSettings.surfaceLevel
+            };
+
+            JobHandle marchHandle = marchJob.Schedule(
+                cubeCount,
+                MarchBatchSize,
+                chunk.GetPointDependency());
+
+            chunk.SetPointDependency(marchHandle);
+
+            // Unity Mesh objects must be updated on the main thread.
+            chunk.CompletePointJobs();
+
+            BuildMeshFromJobResults(
+                chunk,
+                jobTriangleBuffer,
+                triangleCounts,
+                cubeCount);
+        }
+        finally
+        {
+            if (jobTriangleBuffer.IsCreated)
+                jobTriangleBuffer.Dispose();
+
+            if (triangleCounts.IsCreated)
+                triangleCounts.Dispose();
+
+            chunk.MarkRebuilt();
+        }
+    }
+
+    //void GenerateMesh(Chunk chunk)
+    //{
+    //    Vector3Int coord = chunk.GetCoords();
+    //    Vector3 centre = CentreFromCoord(coord);
+
+    //    // Put in build chunk
+    //    float pointSpacing = worldSettings.boundsSize / (worldSettings.numPointsPerAxis - 1);
+    //    densityGenerator.Generate(chunk.pointsBuffer, worldSettings.numPointsPerAxis, worldSettings.boundsSize, worldDimensions, Vector3.zero, centre, worldSettings.offset, pointSpacing);
+
+    //    DispatchComputeShader(chunk);
+
+    //    // Get number of triangles in the triangle buffer
+    //    ComputeBuffer.CopyCount(triangleBuffer, triCountBuffer, 0);
+    //    int[] triCountArray = { 0 };
+    //    triCountBuffer.GetData(triCountArray);
+    //    int numTris = triCountArray[0];
+
+    //    // Get triangle data from shader
+    //    Triangle[] tris = new Triangle[numTris];
+    //    triangleBuffer.GetData(tris, 0, 0, numTris);
+    //    var meshVertices = new Vector3[numTris * 3];
+    //    // One triangle index list per material
+    //    chunk.SetSubmeshAmount(materials.Length);
+
+    //    for (int i = 0; i < numTris; i++)
+    //    {
+    //        int matIndex = Mathf.Clamp(tris[i].material, 0, materials.Length - 1);
+
+    //        for (int j = 0; j < 3; j++)
+    //        {
+    //            int vertIndex = i * 3 + j;
+    //            meshVertices[vertIndex] = tris[i][j];
+    //            chunk.AddVertexIndexTo(matIndex, vertIndex);
+    //        }
+    //    }
+
+    //    Mesh mesh = new Mesh();
+    //    mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+    //    mesh.vertices = meshVertices;
+    //    mesh.subMeshCount = materials.Length;
+
+    //    for (int m = 0; m < materials.Length; m++)
+    //    {
+    //        mesh.SetTriangles(chunk.GetTris(m), m);
+    //    }
+
+    //    mesh.RecalculateNormals();
+    //    chunk.SetMesh(mesh);
+    //}
+
+    private void BuildMeshFromJobResults(Chunk chunk, NativeArray<Triangle> triangleBuffer, NativeArray<byte> triangleCounts, int cubeCount)
+    {
+        int numTriangles = 0;
+
+        for (int cubeIndex = 0; cubeIndex < cubeCount; cubeIndex++)
+        {
+            numTriangles += triangleCounts[cubeIndex];
+        }
+
+        Vector3[] vertices = new Vector3[numTriangles * 3];
+
         chunk.ClearTris();
 
-        for (int i = 0; i < numTris; i++)
+        int outputTriangleIndex = 0;
+
+        for (int cubeIndex = 0; cubeIndex < cubeCount; cubeIndex++)
         {
-            int matIndex = Mathf.Clamp(tris[i].material, 0, materials.Length - 1);
+            int triangleCount = triangleCounts[cubeIndex];
+            int triangleStart = cubeIndex * 5;
 
-            for (int j = 0; j < 3; j++)
+            for (int localTriangleIndex = 0; localTriangleIndex < triangleCount; localTriangleIndex++)
             {
-                int vertIndex = i * 3 + j;
-                meshVertices[vertIndex] = tris[i][j];
+                Triangle triangle =
+                    triangleBuffer[
+                        triangleStart + localTriangleIndex];
 
-                chunk.AddVertexIndexTo(matIndex, vertIndex);
+                int materialIndex = Mathf.Clamp(
+                    triangle.material,
+                    0,
+                    materials.Length - 1);
+
+                int vertexStart = outputTriangleIndex * 3;
+
+                vertices[vertexStart] =
+                    triangle.vertexA;
+
+                vertices[vertexStart + 1] =
+                    triangle.vertexB;
+
+                vertices[vertexStart + 2] =
+                    triangle.vertexC;
+
+                chunk.AddVertexIndexTo(
+                    materialIndex,
+                    vertexStart);
+
+                chunk.AddVertexIndexTo(
+                    materialIndex,
+                    vertexStart + 1);
+
+                chunk.AddVertexIndexTo(
+                    materialIndex,
+                    vertexStart + 2);
+
+                outputTriangleIndex++;
             }
         }
 
         Mesh mesh = chunk.GetMesh();
+
         mesh.Clear(false);
-
-        mesh.SetVertices(meshVertices, 0, numTris * 3);
+        mesh.SetVertices(vertices);
         mesh.subMeshCount = materials.Length;
 
-        for (int m = 0; m < materials.Length; m++)
+        for (int materialIndex = 0;
+             materialIndex < materials.Length;
+             materialIndex++)
         {
-            mesh.SetTriangles(chunk.GetTris(m), m);
+            mesh.SetTriangles(
+                chunk.GetTris(materialIndex),
+                materialIndex,
+                false);
         }
 
-        ArrayPool<Triangle>.Shared.Return(tris);
-        ArrayPool<Vector3>.Shared.Return(meshVertices);
-
         mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
         chunk.SetCollider();
-    }
-
-    void GenerateMesh(Chunk chunk)
-    {
-        Vector3Int coord = chunk.GetCoords();
-        Vector3 centre = CentreFromCoord(coord);
-
-        // Put in build chunk
-        float pointSpacing = worldSettings.boundsSize / (worldSettings.numPointsPerAxis - 1);
-        densityGenerator.Generate(chunk.pointsBuffer, worldSettings.numPointsPerAxis, worldSettings.boundsSize, worldDimensions, Vector3.zero, centre, worldSettings.offset, pointSpacing);
-
-        DispatchComputeShader(chunk);
-
-        // Get number of triangles in the triangle buffer
-        ComputeBuffer.CopyCount(triangleBuffer, triCountBuffer, 0);
-        int[] triCountArray = { 0 };
-        triCountBuffer.GetData(triCountArray);
-        int numTris = triCountArray[0];
-
-        // Get triangle data from shader
-        Triangle[] tris = new Triangle[numTris];
-        triangleBuffer.GetData(tris, 0, 0, numTris);
-        var meshVertices = new Vector3[numTris * 3];
-        // One triangle index list per material
-        chunk.SetSubmeshAmount(materials.Length);
-
-        for (int i = 0; i < numTris; i++)
-        {
-            int matIndex = Mathf.Clamp(tris[i].material, 0, materials.Length - 1);
-
-            for (int j = 0; j < 3; j++)
-            {
-                int vertIndex = i * 3 + j;
-                meshVertices[vertIndex] = tris[i][j];
-                chunk.AddVertexIndexTo(matIndex, vertIndex);
-            }
-        }
-
-        Mesh mesh = new Mesh();
-        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        mesh.vertices = meshVertices;
-        mesh.subMeshCount = materials.Length;
-
-        for (int m = 0; m < materials.Length; m++)
-        {
-            mesh.SetTriangles(chunk.GetTris(m), m);
-        }
-
-        mesh.RecalculateNormals();
-        chunk.SetMesh(mesh);
-    }
-
-    void CreateBuffers()
-    {
-        int numPoints = worldSettings.numPointsPerAxis * worldSettings.numPointsPerAxis * worldSettings.numPointsPerAxis;
-        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
-        int numVoxels = numVoxelsPerAxis * numVoxelsPerAxis * numVoxelsPerAxis;
-        int maxTriangleCount = numVoxels * 5;
-
-        triangleBuffer = new ComputeBuffer(maxTriangleCount, sizeof(float) * 3 * 3 + sizeof(int), ComputeBufferType.Append);
-        triCountBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
-    }
-
-    void ReleaseBuffers()
-    {
-        if (triangleBuffer != null)
-        {
-            triangleBuffer.Release();
-            triangleBuffer = null;
-        }
-
-        if (triCountBuffer != null)
-        {
-            triCountBuffer.Release();
-            triCountBuffer = null;
-        }
     }
 
     Vector3Int WorldToChunkCoord(Vector3 pos)
@@ -287,9 +362,6 @@ public class MarchingCubesCompute : MonoBehaviour
                 }
             }
         }
-
-        // Give meshes
-        BuildAllChunks();
     }
 
     private void FixedUpdate()
@@ -322,140 +394,156 @@ public class MarchingCubesCompute : MonoBehaviour
         return chunks[index];
     }
 
-    public void EditSphere(ComputeShader computeEditting, Vector3 worldPos, float radius)
+    //public void EditSphere(ComputeShader computeEditting, Vector3 worldPos, float radius)
+    //{
+    //    // World-space AABB of the sphere
+    //    Vector3 min = worldPos - Vector3.one * radius;
+    //    Vector3 max = worldPos + Vector3.one * radius;
+
+    //    // Convert to chunk coordinates
+    //    Vector3Int minCoord = WorldToChunkCoord(min);
+    //    Vector3Int maxCoord = WorldToChunkCoord(max);
+
+    //    // Clamp to world bounds
+    //    minCoord.x = Mathf.Clamp(minCoord.x, 0, (int)worldDimensions.x - 1);
+    //    minCoord.y = Mathf.Clamp(minCoord.y, 0, (int)worldDimensions.y - 1);
+    //    minCoord.z = Mathf.Clamp(minCoord.z, 0, (int)worldDimensions.z - 1);
+
+    //    maxCoord.x = Mathf.Clamp(maxCoord.x, 0, (int)worldDimensions.x - 1);
+    //    maxCoord.y = Mathf.Clamp(maxCoord.y, 0, (int)worldDimensions.y - 1);
+    //    maxCoord.z = Mathf.Clamp(maxCoord.z, 0, (int)worldDimensions.z - 1);
+
+    //    int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
+    //    int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
+
+    //    // Loop through all potentially affected chunks
+    //    for (int x = minCoord.x; x <= maxCoord.x; x++)
+    //    {
+    //        for (int y = minCoord.y; y <= maxCoord.y; y++)
+    //        {
+    //            for (int z = minCoord.z; z <= maxCoord.z; z++)
+    //            {
+    //                Chunk chunk = GetChunkFromCoord(new Vector3Int(x, y, z));
+    //                if (chunk == null)
+    //                    continue;
+
+    //                // This uses world-space positions stored in the buffer,
+    //                // so we can pass the same worldPos & radius to every chunk.
+    //                computeEditting.SetBuffer(0, "points", chunk.pointsBuffer);
+    //                computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
+
+    //                // Ammo Buffer
+    //                computeEditting.SetBuffer(0, "ammos", GunManager.ammoBuffer);
+
+    //                computeEditting.Dispatch(0, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
+
+    //                GunManager.UpdateAmmoCPU();
+    //                chunk.HasChanged();
+    //            }
+    //        }
+    //    }
+    //}
+
+    //public void EditChunk(ComputeShader computeEditting, Chunk chunk)
+    //{
+    //    if (chunk == null)
+    //        return;
+
+    //    int editKernel = computeEditting.FindKernel("CSMain");
+
+    //    int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
+    //    int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
+
+    //    computeEditting.SetBuffer(editKernel, "points", chunk.pointsBuffer);
+    //    computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
+
+    //    computeEditting.Dispatch(editKernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
+
+    //    chunk.HasChanged();
+    //}
+
+    //public void EditTunnel(ComputeShader computeEditting, Vector3 cylinderStart, Vector3 cylinderEnd, float startRadius, float endRadius)
+    //{
+    //    float maxRadius = Mathf.Max(startRadius, endRadius);
+
+    //    // World-space AABB of the rotated tapered cylinder
+    //    Vector3 min = Vector3.Min(cylinderStart, cylinderEnd) - Vector3.one * maxRadius;
+    //    Vector3 max = Vector3.Max(cylinderStart, cylinderEnd) + Vector3.one * maxRadius;
+
+    //    // Convert to chunk coordinates
+    //    Vector3Int minCoord = WorldToChunkCoord(min);
+    //    Vector3Int maxCoord = WorldToChunkCoord(max);
+
+    //    // Clamp to world bounds
+    //    minCoord.x = Mathf.Clamp(minCoord.x, 0, (int)worldDimensions.x - 1);
+    //    minCoord.y = Mathf.Clamp(minCoord.y, 0, (int)worldDimensions.y - 1);
+    //    minCoord.z = Mathf.Clamp(minCoord.z, 0, (int)worldDimensions.z - 1);
+
+    //    maxCoord.x = Mathf.Clamp(maxCoord.x, 0, (int)worldDimensions.x - 1);
+    //    maxCoord.y = Mathf.Clamp(maxCoord.y, 0, (int)worldDimensions.y - 1);
+    //    maxCoord.z = Mathf.Clamp(maxCoord.z, 0, (int)worldDimensions.z - 1);
+
+    //    int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
+    //    int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
+
+    //    // Loop through all potentially affected chunks
+    //    for (int x = minCoord.x; x <= maxCoord.x; x++)
+    //    {
+    //        for (int y = minCoord.y; y <= maxCoord.y; y++)
+    //        {
+    //            for (int z = minCoord.z; z <= maxCoord.z; z++)
+    //            {
+    //                Chunk chunk = GetChunkFromCoord(new Vector3Int(x, y, z));
+    //                if (chunk == null)
+    //                    continue;
+
+    //                computeEditting.SetBuffer(0, "points", chunk.pointsBuffer);
+    //                computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
+
+    //                computeEditting.SetVector("cylinderStart", cylinderStart);
+    //                computeEditting.SetVector("cylinderEnd", cylinderEnd);
+    //                computeEditting.SetFloat("startRadius", startRadius);
+    //                computeEditting.SetFloat("endRadius", endRadius);
+
+    //                computeEditting.Dispatch(kernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
+
+    //                chunk.HasChanged();
+    //            }
+    //        }
+    //    }
+    //}
+
+    private void CreateLookupTables()
     {
-        // World-space AABB of the sphere
-        Vector3 min = worldPos - Vector3.one * radius;
-        Vector3 max = worldPos + Vector3.one * radius;
+        triTableNative = MarchTables.CreateTriTable(Allocator.Persistent);
 
-        // Convert to chunk coordinates
-        Vector3Int minCoord = WorldToChunkCoord(min);
-        Vector3Int maxCoord = WorldToChunkCoord(max);
+        cornerAFromEdgeNative = MarchTables.CreateCornerAFromEdge(Allocator.Persistent);
+        cornerBFromEdgeNative = MarchTables.CreateCornerBFromEdge(Allocator.Persistent);
+    }
 
-        // Clamp to world bounds
-        minCoord.x = Mathf.Clamp(minCoord.x, 0, (int)worldDimensions.x - 1);
-        minCoord.y = Mathf.Clamp(minCoord.y, 0, (int)worldDimensions.y - 1);
-        minCoord.z = Mathf.Clamp(minCoord.z, 0, (int)worldDimensions.z - 1);
-
-        maxCoord.x = Mathf.Clamp(maxCoord.x, 0, (int)worldDimensions.x - 1);
-        maxCoord.y = Mathf.Clamp(maxCoord.y, 0, (int)worldDimensions.y - 1);
-        maxCoord.z = Mathf.Clamp(maxCoord.z, 0, (int)worldDimensions.z - 1);
-
-        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
-        int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
-
-        // Loop through all potentially affected chunks
-        for (int x = minCoord.x; x <= maxCoord.x; x++)
+    private void OnDestroy()
+    {
+        if (chunks != null)
         {
-            for (int y = minCoord.y; y <= maxCoord.y; y++)
+            foreach (Chunk chunk in chunks)
             {
-                for (int z = minCoord.z; z <= maxCoord.z; z++)
+                if (chunk != null)
                 {
-                    Chunk chunk = GetChunkFromCoord(new Vector3Int(x, y, z));
-                    if (chunk == null)
-                        continue;
-
-                    // This uses world-space positions stored in the buffer,
-                    // so we can pass the same worldPos & radius to every chunk.
-                    computeEditting.SetBuffer(0, "points", chunk.pointsBuffer);
-                    computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
-
-                    // Ammo Buffer
-                    computeEditting.SetBuffer(0, "ammos", GunManager.ammoBuffer);
-
-                    computeEditting.Dispatch(0, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
-
-                    GunManager.UpdateAmmoCPU();
-                    chunk.HasChanged();
+                    chunk.CompletePointJobs();
+                    chunk.ReleaseBuffers();
                 }
             }
         }
-    }
 
-    public void EditChunk(ComputeShader computeEditting, Chunk chunk)
-    {
-        if (chunk == null)
-            return;
+        if (triTableNative.IsCreated)
+            triTableNative.Dispose();
 
-        int editKernel = computeEditting.FindKernel("CSMain");
+        if (cornerAFromEdgeNative.IsCreated)
+            cornerAFromEdgeNative.Dispose();
 
-        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
-        int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
+        if (cornerBFromEdgeNative.IsCreated)
+            cornerBFromEdgeNative.Dispose();
 
-        computeEditting.SetBuffer(editKernel, "points", chunk.pointsBuffer);
-        computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
-
-        computeEditting.Dispatch(editKernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
-
-        chunk.HasChanged();
-    }
-
-    public void EditTunnel(ComputeShader computeEditting, Vector3 cylinderStart, Vector3 cylinderEnd, float startRadius, float endRadius)
-    {
-        float maxRadius = Mathf.Max(startRadius, endRadius);
-
-        // World-space AABB of the rotated tapered cylinder
-        Vector3 min = Vector3.Min(cylinderStart, cylinderEnd) - Vector3.one * maxRadius;
-        Vector3 max = Vector3.Max(cylinderStart, cylinderEnd) + Vector3.one * maxRadius;
-
-        // Convert to chunk coordinates
-        Vector3Int minCoord = WorldToChunkCoord(min);
-        Vector3Int maxCoord = WorldToChunkCoord(max);
-
-        // Clamp to world bounds
-        minCoord.x = Mathf.Clamp(minCoord.x, 0, (int)worldDimensions.x - 1);
-        minCoord.y = Mathf.Clamp(minCoord.y, 0, (int)worldDimensions.y - 1);
-        minCoord.z = Mathf.Clamp(minCoord.z, 0, (int)worldDimensions.z - 1);
-
-        maxCoord.x = Mathf.Clamp(maxCoord.x, 0, (int)worldDimensions.x - 1);
-        maxCoord.y = Mathf.Clamp(maxCoord.y, 0, (int)worldDimensions.y - 1);
-        maxCoord.z = Mathf.Clamp(maxCoord.z, 0, (int)worldDimensions.z - 1);
-
-        int numVoxelsPerAxis = worldSettings.numPointsPerAxis - 1;
-        int numThreadsPerAxis = Mathf.CeilToInt(numVoxelsPerAxis / 8f);
-
-        // Loop through all potentially affected chunks
-        for (int x = minCoord.x; x <= maxCoord.x; x++)
-        {
-            for (int y = minCoord.y; y <= maxCoord.y; y++)
-            {
-                for (int z = minCoord.z; z <= maxCoord.z; z++)
-                {
-                    Chunk chunk = GetChunkFromCoord(new Vector3Int(x, y, z));
-                    if (chunk == null)
-                        continue;
-
-                    computeEditting.SetBuffer(0, "points", chunk.pointsBuffer);
-                    computeEditting.SetInt("numPointsPerAxis", worldSettings.numPointsPerAxis);
-
-                    computeEditting.SetVector("cylinderStart", cylinderStart);
-                    computeEditting.SetVector("cylinderEnd", cylinderEnd);
-                    computeEditting.SetFloat("startRadius", startRadius);
-                    computeEditting.SetFloat("endRadius", endRadius);
-
-                    computeEditting.Dispatch(kernel, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
-
-                    chunk.HasChanged();
-                }
-            }
-        }
-    }
-
-    void BuildAllChunks()
-    {
-        foreach (Chunk chunk in chunks)
-        {
-            GenerateMesh(chunk);
-        }
-    }
-
-    void OnDestroy()
-    {
-        ReleaseBuffers();
-
-        foreach (Chunk chunk in chunks)
-        {
-            chunk.ReleaseBuffers();
-        }
+        dirtyChunks?.Clear();
     }
 }
